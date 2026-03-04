@@ -2358,15 +2358,24 @@
         }
 
         function updateDashboard() {
+            // Build today's date string once (local time, YYYY-MM-DD)
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+            // All totals reset to 0 on every call — crossing midnight auto-clears
             let totalCals = 0;
             let totalCarbsVal = 0;
             let totalProteinVal = 0;
             let totalFatVal = 0;
-
             let totalLoadVal = 0;
             let totalTimeVal = 0;
 
             records.forEach(record => {
+                // Only count records that belong to TODAY
+                const recDate = new Date(record.timestamp);
+                const recStr = `${recDate.getFullYear()}-${String(recDate.getMonth() + 1).padStart(2, '0')}-${String(recDate.getDate()).padStart(2, '0')}`;
+                if (recStr !== todayStr) return;
+
                 if (record.category === 'diet') {
                     totalCals += record.calories;
                     totalCarbsVal += record.carbs;
@@ -2378,7 +2387,7 @@
                 }
             });
 
-            // Update targets for animation
+            // Update animation targets
             counterElements.totalCalories.target = Math.ceil(totalCals);
             counterElements.totalCarbs.target = totalCarbsVal;
             counterElements.totalProtein.target = totalProteinVal;
