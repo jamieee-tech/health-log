@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運動與飲食整合紀錄網頁</title>
+    <!-- Google Fonts for modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --panel-bg: #ffffff;
+            --panel-border: #e4e8ee;
+            --bg-input: #fcfcfc;
+            --bg-chart: #f5f5f5;
+            --accent-exercise: #27ae60;
+            --accent-diet: #2980b9;
+            --accent-protein: #e67e22;
+            --neon-green: #27ae60;
+            --neon-green-glow: rgba(39, 174, 96, 0.2);
+            --neon-blue: #2980b9;
+            --neon-blue-glow: rgba(41, 128, 185, 0.2);
+            --text-main: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --danger: #e74c3c;
+            --card-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, var(--accent-exercise), var(--accent-diet));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--card-radius);
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+        }
+
+        .stat-card.health::before {
+            background: var(--accent-diet);
+        }
+
+        .stat-card.fitness::before {
+            background: var(--accent-exercise);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card.health:hover {
+            border-color: rgba(41, 128, 185, 0.3);
+        }
+
+        .stat-card.fitness:hover {
+            border-color: rgba(39, 174, 96, 0.3);
+        }
+
+        .stat-card h3 {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .stat-card .value {
+            font-size: 4rem;
+            font-weight: 800;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 0.4rem;
+            line-height: 1.1;
+            font-family: 'Outfit', sans-serif;
+            transition: color 0.3s ease;
+        }
+
+        .stat-card.health .value {
+            color: var(--accent-diet);
+        }
+
+        .stat-card.fitness .value {
+            color: var(--accent-exercise);
+        }
+
+        .stat-card .unit {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            text-shadow: none;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .macros-breakdown {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--panel-border);
+        }
+
+        .macros-breakdown span {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .macros-breakdown .m-val {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.4rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .macros-breakdown .m-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-section {
+            display: flex;
+            align-items: stretch;
+            gap: 2rem;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        @media (max-width: 860px) {
+            .input-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        .input-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--card-radius);
+            padding: 2.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .input-panel .fitness-form,
+        .input-panel .health-form {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        /* flex:1 spacer — absorbs remaining vertical space before submit */
+        .form-spacer {
+            flex: 1;
+            min-height: 0.5rem;
+        }
+
+        /*
+         * Phantom footer: added after fitness-form inside exercise panel.
+         * Its height mirrors the diet panel's toggle button (margin-top:15px +
+         * padding:0.8rem*2 + line-height ≈ 3.7rem) so both forms are
+         * equal height → flex:1 spacers yield identical button Y positions.
+         */
+        .panel-footer-spacer {
+            height: 3.8rem;
+            flex-shrink: 0;
+        }
+
+        .input-panel .submit-btn {
+            margin-top: 1.5rem;
+        }
+
+        .input-panel h2 {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--text-main);
+            font-size: 1.8rem;
+        }
+
+        .input-panel h2.health-title {
+            color: var(--accent-diet);
+        }
+
+        .input-panel h2.fitness-title {
+            color: var(--accent-exercise);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid #efefef;
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            background: #ffffff;
+            border-color: var(--accent-diet);
+            box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.1);
+        }
+
+        .fitness-form input:focus,
+        .fitness-form select:focus {
+            border-color: var(--accent-exercise);
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+        }
+
+        .health-form input:focus,
+        .health-form select:focus {
+            border-color: var(--accent-diet);
+            box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.1);
+        }
+
+        .custom-select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg fill='%237f8c8d' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-color: var(--bg-input);
+        }
+
+        button.submit-btn {
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            padding: 1.2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 1rem;
+            font-family: 'Outfit', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button.submit-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%) rotate(45deg) translateY(100%);
+            transition: transform 0.6s ease;
+        }
+
+        button.submit-btn:hover::after {
+            transform: translate(-50%, -50%) rotate(45deg) translateY(-100%);
+        }
+
+        button.submit-btn.fitness-btn {
+            background: var(--accent-exercise);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        button.submit-btn.fitness-btn:hover {
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.45);
+            transform: translateY(-2px);
+        }
+
+        button.submit-btn.health-btn {
+            background: var(--accent-diet);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(41, 128, 185, 0.3);
+        }
+
+        button.submit-btn.health-btn:hover {
+            box-shadow: 0 6px 20px rgba(41, 128, 185, 0.45);
+            transform: translateY(-2px);
+        }
+
+        button.submit-btn:active {
+            transform: translateY(1px) !important;
+        }
+
+        .export-section {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            animation: fadeInDown 0.8s ease-out 0.1s both;
+        }
+
+        .export-section input[type="month"] {
+            background: var(--bg-input);
+            border: 1px solid #efefef;
+            border-radius: 10px;
+            padding: 0.8rem 1.2rem;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .export-section input[type="month"]:focus {
+            border-color: var(--accent-exercise);
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #107c41, #21a366);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(33, 163, 102, 0.3);
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(33, 163, 102, 0.4);
+        }
+
+        .export-btn:active {
+            transform: translateY(1px);
+        }
+
+        .history-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--card-radius);
+            padding: 2.5rem;
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-section h2 {
+            margin-bottom: 2rem;
+            color: var(--text-main);
+            font-size: 1.8rem;
+        }
+
+        .history-grouped-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .date-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .date-card-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .date-card-header h3 {
+            color: var(--text-main);
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .date-stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.8rem;
+            align-items: center;
+        }
+
+        .date-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: #f0f2f5;
+            border-radius: 20px;
+            padding: 0.25rem 0.7rem;
+        }
+
+        .date-stat-pill .pill-val {
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .stat-load .pill-val {
+            color: var(--accent-exercise);
+        }
+
+        .stat-cals .pill-val {
+            color: var(--accent-diet);
+        }
+
+        .stat-weight .pill-val {
+            color: var(--accent-protein);
+        }
+
+        .stat-fat .pill-val {
+            color: var(--danger);
+        }
+
+        .date-progress-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            width: 100%;
+        }
+
+        .progress-group label {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.3rem;
+        }
+
+        .prog-bar {
+            height: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #ecf0f1;
+        }
+
+        .prog-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.6s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .date-summary {
+            display: none;
+        }
+
+        .date-summary .sum-load {
+            color: #ccff00;
+            font-weight: 700;
+        }
+
+        .date-summary .sum-cals {
+            color: #00d4ff;
+            font-weight: 700;
+        }
+
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .record-item:hover {
+            background: #eff2f5;
+            transform: translateX(5px);
+        }
+
+        .record-item.exercise {
+            border-left: 5px solid var(--accent-exercise);
+        }
+
+        .record-item.diet {
+            border-left: 5px solid var(--accent-diet);
+        }
+
+        .record-item.diet.vegetable {
+            border-left: 5px solid #27ae60;
+        }
+
+        .record-photo-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 1px solid var(--panel-border);
+            transition: transform 0.2s ease;
+            margin-right: 1rem;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .record-photo-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .photo-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .photo-modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .photo-modal-content {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+            object-fit: contain;
+        }
+
+        .close-modal-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.2s ease;
+        }
+
+        .close-modal-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .record-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .record-title {
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .record-details {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .record-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            margin-right: 1.5rem;
+        }
+
+        .water-btn {
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .water-btn:hover {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .water-progress-bg {
+            background: #ecf0f1;
+            border-radius: 10px;
+            height: 12px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .water-progress-fill {
+            background: #3498db;
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .protein-progress-bg {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            height: 10px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 0.8rem;
+        }
+
+        .protein-progress-fill {
+            background: #f39c12;
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .protein-progress-fill.goal-met {
+            background: #2ecc71;
+        }
+
+        .record-item.water {
+            border-left: 5px solid #3498db;
+        }
+
+        .meal-period-header {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            background: #f0f2f5;
+            border-radius: 8px;
+            padding: 0.45rem 0.9rem;
+            margin: 0.8rem 0 0.2rem 0;
+        }
+
+        .exercise .record-value {
+            color: var(--accent-exercise);
+        }
+
+        .diet .record-value {
+            color: var(--accent-diet);
+        }
+
+        .item-right {
+            display: flex;
+            align-items: center;
+        }
+
+        .btn-sm-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn-sm-delete:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .badge.exercise {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--accent-exercise);
+            border: 1px solid rgba(39, 174, 96, 0.3);
+        }
+
+        .badge.diet {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--neon-blue);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .delete-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Number counting animation class */
+        .count-up {
+            display: inline-block;
+        }
+
+        /* ─── Login Overlay ─────────────────────────────── */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: #fcfcfc;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease;
+        }
+
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #login-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            width: 300px;
+            text-align: center;
+        }
+
+        #login-card .lock-icon {
+            font-size: 2.8rem;
+            margin-bottom: 0.2rem;
+        }
+
+        #login-card h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #2c3e50;
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+        }
+
+        #login-card p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        #login-pwd {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            border: 1px solid #efefef;
+            border-radius: 12px;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 1.05rem;
+            outline: none;
+            text-align: center;
+            letter-spacing: 0.15em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        #login-pwd:focus {
+            border-color: #2980b9;
+            box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.1);
+        }
+
+        #login-error {
+            color: #e74c3c;
+            font-size: 0.82rem;
+            display: none;
+            height: 1rem;
+        }
+
+        #login-btn {
+            width: 100%;
+            padding: 0.95rem;
+            background: #2c3e50;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: background 0.25s, transform 0.15s;
+        }
+
+        #login-btn:hover {
+            background: #3d5166;
+            transform: translateY(-1px);
+        }
+
+        #login-btn:active {
+            transform: translateY(1px);
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-8px);
+            }
+
+            40% {
+                transform: translateX(8px);
+            }
+
+            60% {
+                transform: translateX(-6px);
+            }
+
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.4s ease;
+        }
+
+        /* ──────────────────────────────────────────────── */
+
+        /* Sync Status Indicator */
+        #sync-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            border: 1px solid #efefef;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            z-index: 9000;
+            display: none;
+            transition: opacity 0.4s ease;
+            letter-spacing: 0.02em;
+        }
+
+        #sync-status.syncing {
+            background: #f0f4ff;
+            color: #2980b9;
+            border-color: #c8ddf7;
+            display: block;
+            opacity: 1;
+        }
+
+        #sync-status.done {
+            background: #f0faf4;
+            color: #27ae60;
+            border-color: #b7e4c7;
+            display: block;
+            opacity: 1;
+        }
+
+        #sync-status.error {
+            background: #fff5f0;
+            color: #e74c3c;
+            border-color: #f5c6c0;
+            display: block;
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ─── Login Overlay ──────────────────────────────────────── -->
+    <div id="login-overlay">
+        <div id="login-card">
+            <div class="lock-icon">🔒</div>
+            <h2>健康日誌</h2>
+            <p>請輸入密碼以繼續</p>
+            <input type="password" id="login-pwd" placeholder="密碼" autocomplete="current-password" autofocus>
+            <div id="login-error">密碼錯誤，請再試一次</div>
+            <button id="login-btn">進 入</button>
+        </div>
+    </div>
+    <!-- ─────────────────────────────────────────────────────────── -->
+
+    <div class="container">
+        <header>
+            <h1>FitTrack Pro</h1>
+            <p style="color: var(--text-secondary); font-size: 1.1rem; letter-spacing: 0.5px;">運動與飲食智慧整合儀表板</p>
+        </header>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <input type="month" id="export-month" required>
+            <button id="export-excel-btn" class="export-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                匯出本月報表
+            </button>
+        </div>
+
+        <!-- Dashboard -->
+        <section class="dashboard">
+            <div class="stat-card fitness">
+                <h3>⚡ 今日總運動負荷</h3>
+                <div class="value"><span id="total-load" class="count-up">0</span> <span class="unit">Load</span></div>
+                <div
+                    style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); color: var(--text-main); font-weight: 600; font-size: 1.1rem; text-transform: uppercase;">
+                    總時長: <span id="total-time-display" style="color: var(--neon-green)">0</span> 分鐘
+                </div>
+            </div>
+
+            <div class="stat-card health">
+                <h3>🔥 今日總熱量</h3>
+                <div class="value"><span id="total-calories" class="count-up">0</span> <span class="unit">kcal</span>
+                </div>
+                <div class="macros-breakdown">
+                    <span>
+                        <span class="m-val count-up" id="total-carbs">0</span>
+                        <span class="m-label">碳水(g)</span>
+                    </span>
+                    <span>
+                        <span class="m-val count-up" id="total-protein">0</span>
+                        <span class="m-label">蛋白(g)</span>
+                    </span>
+                    <span>
+                        <span class="m-val count-up" id="total-fat">0</span>
+                        <span class="m-label">脂肪(g)</span>
+                    </span>
+                </div>
+                <!-- Protein Goal Input -->
+                <div
+                    style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--panel-border); display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                    <label style="font-size:0.85rem; color: var(--accent-protein); white-space:nowrap;">🎯
+                        每日蛋白目標</label>
+                    <input type="number" id="protein-goal-input" value="120" min="10" step="5"
+                        style="width:70px; padding:0.3rem 0.5rem; border-radius:6px; border:1px solid #efefef; background:var(--bg-input); color:var(--accent-protein); font-weight:700; text-align:center; outline:none;">
+                    <span style="font-size:0.85rem; color:var(--text-secondary);">g / 天</span>
+                    <button onclick="saveProteinGoal()"
+                        style="padding:0.3rem 0.8rem; border-radius:6px; border:1px solid rgba(230,126,34,0.3); background:rgba(230,126,34,0.08); color:var(--accent-protein); cursor:pointer; font-size:0.8rem;">儲存</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Input Section -->
+        <section class="input-section">
+            <!-- Exercise Panel -->
+            <div class="input-panel">
+                <h2 class="fitness-title">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                        <line x1="6" y1="1" x2="6" y2="4"></line>
+                        <line x1="10" y1="1" x2="10" y2="4"></line>
+                        <line x1="14" y1="1" x2="14" y2="4"></line>
+                    </svg>
+                    運動紀錄
+                </h2>
+                <form id="exercise-form" class="fitness-form">
+                    <div class="form-group">
+                        <label for="ex-type">項 目</label>
+                        <select id="ex-type" required>
+                            <option value="" disabled selected>請選擇運動項目...</option>
+                            <option value="跑步">🏃‍♂️ 跑步</option>
+                            <option value="健身">🏋️‍♂️ 健身</option>
+                            <option value="有氧">🚴‍♂️ 有氧</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ex-time">時 間 (分鐘)</label>
+                        <input type="number" id="ex-time" min="1" required placeholder="例如: 30">
+                    </div>
+                    <div class="form-group">
+                        <label for="ex-load">運 動 負 荷 (Garmin Load)</label>
+                        <input type="number" id="ex-load" min="0" required placeholder="例如: 120">
+                    </div>
+                    <!-- flex:1 spacer — pushes submit down to match diet button position -->
+                    <div class="form-spacer"></div>
+                    <button type="submit" class="submit-btn fitness-btn">新增運動紀錄</button>
+                </form>
+                <!-- Phantom footer: mirrors height of diet panel's toggle button
+                     so both forms get equal height and buttons land on same Y line -->
+                <div class="panel-footer-spacer"></div>
+            </div>
+
+            <!-- Diet Panel -->
+            <div class="input-panel">
+                <h2 class="health-title">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20"></path>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    飲食紀錄
+                </h2>
+                <form id="diet-form" class="health-form">
+                    <div class="form-group">
+                        <label for="diet-meal-period">進 食 時 段</label>
+                        <select id="diet-meal-period" class="custom-select" required>
+                            <option value="早餐">🍅 早餐</option>
+                            <option value="午餐">🍛 午餐</option>
+                            <option value="晚餐">🌙 晚餐</option>
+                            <option value="點心/其他">🍪 點心/其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="diet-food-select">選 擇 食 物</label>
+                        <select id="diet-food-select" class="custom-select" required>
+                            <option value="" disabled selected>請選擇食物...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="diet-weight">重 量 (克)</label>
+                        <input type="number" id="diet-weight" min="1" step="1" required placeholder="例如: 200">
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 1.5rem;">
+                        <label for="diet-photo"
+                            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--neon-blue);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                </path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            📷 加 入 照 片 (選填)
+                        </label>
+                        <input type="file" id="diet-photo" accept="image/*" capture="environment"
+                            style="display: none;">
+                        <div id="photo-preview-container"
+                            style="display: none; margin-top: 0.8rem; position: relative; width: fit-content;">
+                            <img id="photo-preview"
+                                style="max-width: 100px; max-height: 100px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); object-fit: cover;">
+                            <button type="button" id="remove-photo-btn"
+                                style="position: absolute; top: -8px; right: -8px; background: var(--danger); border: none; color: white; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 1rem;">&times;</button>
+                        </div>
+                    </div>
+                    <!-- flex:1 spacer — pushes submit down so it aligns with exercise button -->
+                    <div class="form-spacer"></div>
+                    <button type="submit" class="submit-btn health-btn">新增飲食紀錄</button>
+                </form>
+
+                <!-- Custom food toggle — outside flex form so it doesn't break button alignment -->
+                <button type="button" id="toggle-custom-food-btn"
+                    style="margin-top: 15px; background: transparent; border: 1px dashed var(--accent-diet); color: var(--accent-diet); padding: 0.8rem; border-radius: 8px; cursor: pointer; width: 100%; font-size: 0.95rem; transition: all 0.3s ease;">+
+                    自行新增食物資料庫</button>
+
+                <form id="custom-food-form" class="health-form"
+                    style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--panel-border);">
+                    <h3 style="color: var(--accent-diet); font-size: 1.1rem; margin-bottom: 1rem;">新增自訂食物 (每 100g 數值)
+                    </h3>
+                    <div class="form-group">
+                        <label for="custom-name">食 物 名 稱</label>
+                        <input type="text" id="custom-name" required placeholder="例如: 燕麥片">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="custom-carbs">碳水 (g)</label>
+                            <input type="number" id="custom-carbs" min="0" step="0.1" required placeholder="60">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-protein">蛋白 (g)</label>
+                            <input type="number" id="custom-protein" min="0" step="0.1" required placeholder="13">
+                        </div>
+                        <div class="form-group">
+                            <label for="custom-fat">脂肪 (g)</label>
+                            <input type="number" id="custom-fat" min="0" step="0.1" required placeholder="6">
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-btn health-btn"
+                        style="padding: 0.8rem; font-size: 1rem; margin-top: 10px;">儲存至資料庫</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Water Section -->
+        <section class="water-section"
+            style="background: var(--panel-bg); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid #efefef; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <h2
+                style="font-size: 1.3rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-diet);">
+                💧 紀錄飲水</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                <button class="water-btn" type="button" onclick="addWater(250)">+ 250 cc</button>
+                <button class="water-btn" type="button" onclick="addWater(500)">+ 500 cc</button>
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+                    <input type="number" id="manual-water" placeholder="手動輸入 cc"
+                        style="width: 130px; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main); font-size: 0.95rem; outline: none;"
+                        min="1">
+                    <button class="water-btn" type="button" onclick="addManualWater()">新增</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section class="history-section">
+            <h2>📜 每日健康日誌</h2>
+            <div id="history-container" class="history-grouped-container">
+                <div id="empty-state" class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                    </svg>
+                    <p style="font-size: 1.1rem;">尚無紀錄，開始新增你的第一筆運動或飲食吧！</p>
+                </div>
+                <!-- Grouped cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Body Stats & Trend Chart – Bottom Section -->
+        <section class="body-trend-section"
+            style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.07);">
+            <h2
+                style="font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem; background: linear-gradient(90deg,#f39c12,#e74c3c); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                📊 長期健康趨勢</h2>
+
+            <!-- Input area -->
+            <div
+                style="background: var(--bg-chart); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid #efefef;">
+                <h3
+                    style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--accent-protein); display:flex; align-items:center; gap:0.5rem;">
+                    ⚖️ 紀錄體重與體脂</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <input type="number" id="stats-weight" placeholder="體重 (kg)" step="0.1"
+                        style="width: 120px; padding: 0.6rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main);"
+                        min="1">
+                    <input type="number" id="stats-fat" placeholder="體脂 (%)" step="0.1"
+                        style="width: 120px; padding: 0.6rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main);"
+                        min="1">
+                    <button class="submit-btn health-btn" type="button" onclick="addBodyStats()"
+                        style="width: auto; padding: 0.6rem 1.5rem; margin-top: 0; background: rgba(230,126,34,0.1); color: var(--accent-protein); border: 1px solid rgba(230,126,34,0.3);">儲存今日數據</button>
+                </div>
+            </div>
+
+            <!-- Chart area -->
+            <div style="background: #fcfcfc; padding: 1.5rem; border-radius: 16px; border: 1px solid #efefef;">
+                <div style="position: relative; height: 450px; width: 100%;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Photo Modal -->
+    <!-- Sync Status Badge (fixed top-right) -->
+    <div id="sync-status"></div>
+
+    <div id="photo-modal" class="photo-modal-overlay">
+        <button id="close-modal-btn" class="close-modal-btn">&times;</button>
+        <img id="modal-image" class="photo-modal-content" src="" alt="Enlarged Record Photo">
+    </div>
+
+    <script type="module">
+        // ─── Firebase SDK ────────────────────────────────────────────────────
+        import { initializeApp }
+            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+        import {
+            getFirestore, collection, doc,
+            getDocs, getDoc, setDoc, deleteDoc
+        }
+            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTLBIVjxu2-HQ0dvCGiGjt3tvLNkmK57o",
+            authDomain: "myhealthlog-23caa.firebaseapp.com",
+            projectId: "myhealthlog-23caa",
+            storageBucket: "myhealthlog-23caa.firebasestorage.app",
+            messagingSenderId: "1023293122394",
+            appId: "1:1023293122394:web:32978ed10976d70e867563",
+            measurementId: "G-NR8NP8JE5L"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ─── Sync Status UI ──────────────────────────────────────────────────
+        const syncEl = document.getElementById('sync-status');
+        let syncTimer = null;
+        function showSyncStatus(state) {
+            syncEl.className = state;
+            syncEl.textContent = state === 'syncing' ? '☁️ 雲端同步中...'
+                : state === 'done' ? '✅ 已同步'
+                    : '⚠️ 同步失敗';
+            clearTimeout(syncTimer);
+            if (state !== 'syncing') {
+                syncTimer = setTimeout(() => {
+                    syncEl.style.opacity = '0';
+                    setTimeout(() => { syncEl.className = ''; syncEl.style.opacity = '1'; }, 400);
+                }, 2500);
+            }
+        }
+
+        // ─── Login / Session ─────────────────────────────────────────────────
+        /*
+         * 🔑 Change your password here:
+         */
+        const MY_PASSWORD = 'jamie';
+        const SESSION_KEY = 'fittrack_session';
+        const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+        /*
+         * ── Firebase Security Rules Reminder ──────────────────────────────────
+         * Go to: Firebase Console → Firestore Database → Rules tab
+         *
+         * Option A – Time-limited open access (good for development):
+         *   rules_version = '2';
+         *   service cloud.firestore {
+         *     match /databases/{database}/documents {
+         *       match /{document=**} {
+         *         allow read, write: if request.time < timestamp.date(2026, 6, 1);
+         *       }
+         *     }
+         *   }
+         *
+         * Option B – Require Firebase Authentication (recommended for production):
+         *   1. Firebase Console → Authentication → Sign-in method → enable Email/Password
+         *   2. Change rules to:
+         *         allow read, write: if request.auth != null;
+         *   3. Add Firebase Auth SDK import and signInWithEmailAndPassword() call.
+         * ─────────────────────────────────────────────────────────────────────
+         */
+
+        const loginOverlay = document.getElementById('login-overlay');
+        const loginPwd = document.getElementById('login-pwd');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+
+        function unlockApp() {
+            loginOverlay.classList.add('hidden');
+            setTimeout(() => loginOverlay.style.display = 'none', 420);
+        }
+
+        function attemptLogin() {
+            if (loginPwd.value === MY_PASSWORD) {
+                try { localStorage.setItem(SESSION_KEY, JSON.stringify({ time: Date.now() })); } catch (e) { }
+                unlockApp();
+            } else {
+                loginError.style.display = 'block';
+                loginPwd.classList.add('shake');
+                loginPwd.value = '';
+                loginPwd.focus();
+                setTimeout(() => loginPwd.classList.remove('shake'), 450);
+            }
+        }
+
+        // Check for valid 24-hour session on load
+        (function checkSession() {
+            try {
+                const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+                if (s && Date.now() - s.time < SESSION_DURATION) { unlockApp(); return; }
+            } catch (e) { }
+            // No valid session — show overlay and wire up inputs
+            loginBtn.addEventListener('click', attemptLogin);
+            loginPwd.addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+        })();
+        // ─── Data State ───────────────────────────────────────────────────
+        let records = [];
+        let bodyStats = {};
+
+        // Fast sync-to-memory from localStorage (immediate render on cold start)
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('fitTrackRecords');
+                if (saved) records = JSON.parse(saved).map(r => ({ ...r, timestamp: new Date(r.timestamp) }));
+                const savedStats = localStorage.getItem('fitTrackBodyStats');
+                if (savedStats) bodyStats = JSON.parse(savedStats);
+            } catch (e) { console.error('LocalStorage read:', e); }
+        }
+        loadFromLocalStorage(); // immediate local render
+        let foodDatabase = [
+            // 蛋白質與優格類
+            { id: 'f1', name: '希臘優格', protein: 10, carbs: 3.6, fat: 0.4, note: '高蛋白', group: '蛋白質與優格類' },
+            { id: 'f2', name: '鮮奶優格', protein: 3.5, carbs: 5, fat: 3.5, note: '一般優格', group: '蛋白質與優格類' },
+            { id: 'f3', name: '水煮蛋', protein: 13, carbs: 1.1, fat: 11, note: '優質蛋白', group: '蛋白質與優格類' },
+            { id: 'f4', name: '雞腿排(去皮)', protein: 20, carbs: 0, fat: 8, note: '去皮肉類 ~160kcal', group: '蛋白質與優格類' },
+            // 澱粉類
+            { id: 'f5', name: '地瓜', protein: 1.6, carbs: 20, fat: 0.1, note: '優質澱粉', group: '澱粉類' },
+            { id: 'f6', name: '馬鈴薯', protein: 2, carbs: 20, fat: 0.1, note: '低熱量澱粉', group: '澱粉類' },
+            { id: 'f7', name: '酸種麵包', protein: 12, carbs: 50, fat: 1.5, note: '發酵澱粉', group: '澱粉類' },
+            // 蔬菜類
+            { id: 'f8', name: '櫛瓜', protein: 1.2, carbs: 3, fat: 0.3, note: '低熱量蔬菜', group: '蔬菜類' },
+            { id: 'f9', name: '高麗菜', protein: 1.3, carbs: 6, fat: 0.1, note: '極低熱量', group: '蔬菜類' },
+            { id: 'f10', name: '紅椒', protein: 1, carbs: 6, fat: 0.3, note: '抗氧化', group: '蔬菜類' },
+            { id: 'f11', name: '黃椒', protein: 1, carbs: 6.3, fat: 0.2, note: '豐富維生素', group: '蔬菜類' },
+            { id: 'f12', name: '杏鮑菇', protein: 3.3, carbs: 7, fat: 0.3, note: '高纖維', group: '蔬菜類' },
+            // 水果與犒賞類
+            { id: 'f13', name: '蘋果', protein: 0.3, carbs: 14, fat: 0.2, note: '水果', group: '水果與犒賞類' },
+            { id: 'f14', name: '芭樂', protein: 2.6, carbs: 14, fat: 1, note: '高纖維', group: '水果與犒賞類' },
+            { id: 'f15', name: '肉桂捲', protein: 4.5, carbs: 50, fat: 14, note: '高熱量犒賞', group: '水果與犒賞類' },
+            // 傳統點心
+            { id: 'f16', name: '豆花', protein: 4.5, carbs: 5, fat: 2.5, note: '傳統點心', group: '傳統點心' },
+            { id: 'f17', name: '芋圓', protein: 0.5, carbs: 50, fat: 0.2, note: '傳統點心', group: '傳統點心' },
+            // 飲品類
+            { id: 'f18', name: '豆漿', protein: 3.3, carbs: 0.7, fat: 1.9, note: '無糖豆漿', group: '飲品類' }
+        ];
+
+        // ─── Firestore Helpers ────────────────────────────────────────────
+
+        /** Sanitise a zh-TW date key so it can be a Firestore doc ID (no slashes). */
+        function fKey(dateKey) { return dateKey.replace(/\//g, '-').replace(/\s+/g, '_'); }
+
+        async function firestoreSaveRecord(record) {
+            showSyncStatus('syncing');
+            try {
+                const data = { ...record, timestamp: record.timestamp.toISOString() };
+                await setDoc(doc(db, 'records', record.id), data);
+                showSyncStatus('done');
+            } catch (e) { console.error(e); showSyncStatus('error'); }
+        }
+
+        async function firestoreDeleteRecord(id) {
+            showSyncStatus('syncing');
+            try {
+                await deleteDoc(doc(db, 'records', id));
+                showSyncStatus('done');
+            } catch (e) { console.error(e); showSyncStatus('error'); }
+        }
+
+        async function firestoreSaveBodyStat(dateKey, stat) {
+            try {
+                await setDoc(doc(db, 'bodyStats', fKey(dateKey)), { ...stat, _dateKey: dateKey });
+            } catch (e) { console.error(e); showSyncStatus('error'); }
+        }
+
+        async function firestoreSaveSetting(key, value) {
+            try {
+                await setDoc(doc(db, 'settings', 'user'), { [key]: value }, { merge: true });
+            } catch (e) { console.error(e); }
+        }
+
+        /**
+         * Load all data from Firestore, overriding local cache.
+         * Falls back gracefully to localStorage if Firestore is unreachable.
+         */
+        async function loadFromFirestore() {
+            showSyncStatus('syncing');
+            try {
+                const [recSnap, bsSnap, settSnap] = await Promise.all([
+                    getDocs(collection(db, 'records')),
+                    getDocs(collection(db, 'bodyStats')),
+                    getDoc(doc(db, 'settings', 'user'))
+                ]);
+
+                // Records
+                const cloudRecords = recSnap.docs.map(d => ({
+                    ...d.data(), timestamp: new Date(d.data().timestamp)
+                }));
+                cloudRecords.sort((a, b) => b.timestamp - a.timestamp);
+
+                // Body stats
+                const cloudStats = {};
+                bsSnap.docs.forEach(d => {
+                    const data = d.data();
+                    const key = data._dateKey || d.id.replace(/-/g, '/').replace(/_/g, ' ');
+                    cloudStats[key] = { weight: data.weight, fat: data.fat };
+                });
+
+                // Settings
+                if (settSnap.exists()) {
+                    const goal = settSnap.data().proteinGoal;
+                    if (goal) document.getElementById('protein-goal-input').value = goal;
+                }
+
+                showSyncStatus('done');
+
+                // Migration: if Firestore is empty but localStorage has data, offer migration
+                if (cloudRecords.length === 0 && records.length > 0) {
+                    if (confirm(`☁️ 雲端尚無資料，但偵測到 ${records.length} 筆本地紀錄。\n是否將本地紀錄一次性遷移到雲端？`)) {
+                        showSyncStatus('syncing');
+                        const migrations = records.map(r => firestoreSaveRecord(r));
+                        const bodyMigrations = Object.entries(bodyStats).map(([k, v]) => firestoreSaveBodyStat(k, v));
+                        await Promise.all([...migrations, ...bodyMigrations]);
+                        showSyncStatus('done');
+                    }
+                } else {
+                    // Use cloud data
+                    records = cloudRecords;
+                    bodyStats = cloudStats;
+                    // Update local cache
+                    try {
+                        localStorage.setItem('fitTrackRecords', JSON.stringify(records));
+                        localStorage.setItem('fitTrackBodyStats', JSON.stringify(bodyStats));
+                    } catch (e) { }
+                }
+
+                updateUI();
+            } catch (e) {
+                console.error('Firestore load failed, using localStorage:', e);
+                showSyncStatus('error');
+                // Keep whatever loadFromLocalStorage() already put in memory
+                updateUI();
+            }
+        }
+
+        // ─── DOM Elements ─────────────────────────────────────────────────
+        const exerciseForm = document.getElementById('exercise-form');
+        const dietForm = document.getElementById('diet-form');
+        const customFoodForm = document.getElementById('custom-food-form');
+        const foodSelect = document.getElementById('diet-food-select');
+        const historyContainer = document.getElementById('history-container');
+        const emptyState = document.getElementById('empty-state');
+
+        // Dashboard Elements for animation
+        const counterElements = {
+            totalCalories: { el: document.getElementById('total-calories'), current: 0, target: 0, isDecimal: false },
+            totalCarbs: { el: document.getElementById('total-carbs'), current: 0, target: 0, isDecimal: true },
+            totalProtein: { el: document.getElementById('total-protein'), current: 0, target: 0, isDecimal: true },
+            totalFat: { el: document.getElementById('total-fat'), current: 0, target: 0, isDecimal: true },
+            totalLoad: { el: document.getElementById('total-load'), current: 0, target: 0, isDecimal: false },
+            totalTime: { el: document.getElementById('total-time-display'), current: 0, target: 0, isDecimal: false }
+        };
+
+        // Animation Loop
+        function animateNumbers() {
+            let animating = false;
+
+            for (const key in counterElements) {
+                const item = counterElements[key];
+                if (Math.abs(item.current - item.target) > 0.1) {
+                    animating = true;
+                    // Ease out
+                    item.current += (item.target - item.current) * 0.1;
+
+                    if (Math.abs(item.current - item.target) < 0.5 && !item.isDecimal) {
+                        item.current = item.target;
+                    }
+
+                    if (item.isDecimal) {
+                        item.el.innerText = item.current.toFixed(1);
+                    } else {
+                        item.el.innerText = Math.round(item.current);
+                    }
+                } else {
+                    item.current = item.target;
+                    if (item.isDecimal) {
+                        item.el.innerText = item.target.toFixed(1);
+                    } else {
+                        item.el.innerText = item.target;
+                    }
+                }
+            }
+
+            if (animating) {
+                requestAnimationFrame(animateNumbers);
+            }
+        }
+
+        function triggerAnimations() {
+            requestAnimationFrame(animateNumbers);
+        }
+
+        // Handlers
+        exerciseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const typeSelect = document.getElementById('ex-type');
+            const type = typeSelect.options[typeSelect.selectedIndex].text.replace(/^[^\s]+\s/, ''); // Remove emoji
+
+            const time = parseInt(document.getElementById('ex-time').value, 10);
+            const load = parseInt(document.getElementById('ex-load').value, 10);
+
+            const record = {
+                id: Date.now().toString(),
+                category: 'exercise',
+                type: type,
+                time: time,
+                load: load,
+                timestamp: new Date()
+            };
+
+            records.unshift(record); // Add to beginning
+            firestoreSaveRecord(record);
+            exerciseForm.reset();
+            updateUI();
+        });
+
+        function renderFoodOptions() {
+            const firstOption = foodSelect.options[0];
+            foodSelect.innerHTML = '';
+            foodSelect.appendChild(firstOption);
+
+            const groups = [...new Set(foodDatabase.map(f => f.group || '自訂食物'))];
+
+            groups.forEach(groupName => {
+                const optGroup = document.createElement('optgroup');
+                optGroup.label = groupName;
+
+                foodDatabase.filter(f => (f.group || '自訂食物') === groupName).forEach(food => {
+                    const opt = document.createElement('option');
+                    opt.value = food.id;
+                    const noteStr = food.note ? ` - ${food.note}` : '';
+                    opt.innerText = `${food.name} (每100g: 蛋白${food.protein} 碳水${food.carbs} 脂肪${food.fat})${noteStr}`;
+                    optGroup.appendChild(opt);
+                });
+
+                foodSelect.appendChild(optGroup);
+            });
+        }
+
+        document.getElementById('toggle-custom-food-btn').addEventListener('click', () => {
+            const isHidden = customFoodForm.style.display === 'none';
+            customFoodForm.style.display = isHidden ? 'block' : 'none';
+        });
+
+        customFoodForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('custom-name').value;
+            const carbs = parseFloat(document.getElementById('custom-carbs').value);
+            const protein = parseFloat(document.getElementById('custom-protein').value);
+            const fat = parseFloat(document.getElementById('custom-fat').value);
+
+            const newFood = {
+                id: 'f' + Date.now().toString(),
+                name: name,
+                carbs: carbs,
+                protein: protein,
+                fat: fat,
+                group: '自訂食物'
+            };
+            foodDatabase.push(newFood);
+            renderFoodOptions();
+            customFoodForm.reset();
+            customFoodForm.style.display = 'none';
+            foodSelect.value = newFood.id; // Auto select
+        });
+
+        const photoInput = document.getElementById('diet-photo');
+        const photoPreviewContainer = document.getElementById('photo-preview-container');
+        const photoPreview = document.getElementById('photo-preview');
+        const removePhotoBtn = document.getElementById('remove-photo-btn');
+        let currentPhotoBase64 = null;
+
+        photoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentPhotoBase64 = event.target.result;
+                    photoPreview.src = currentPhotoBase64;
+                    photoPreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removePhotoBtn.addEventListener('click', () => {
+            photoInput.value = '';
+            currentPhotoBase64 = null;
+            photoPreviewContainer.style.display = 'none';
+            photoPreview.src = '';
+        });
+
+        dietForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const foodId = foodSelect.value;
+            const weight = parseFloat(document.getElementById('diet-weight').value);
+
+            if (!foodId) return;
+
+            const food = foodDatabase.find(f => f.id === foodId);
+            if (!food) return;
+
+            const multiplier = weight / 100;
+            const carbsCalc = food.carbs * multiplier;
+            const proteinCalc = food.protein * multiplier;
+            const fatCalc = food.fat * multiplier;
+
+            // Formula calculation requested by user
+            const calories = Math.ceil((carbsCalc * 4) + (proteinCalc * 4) + (fatCalc * 9));
+
+            const record = {
+                id: Date.now().toString(),
+                category: 'diet',
+                name: `${food.name} (${weight}g)`,
+                group: food.group,
+                mealPeriod: document.getElementById('diet-meal-period').value || '午餐',
+                carbs: parseFloat(carbsCalc.toFixed(1)),
+                protein: parseFloat(proteinCalc.toFixed(1)),
+                fat: parseFloat(fatCalc.toFixed(1)),
+                calories: calories,
+                timestamp: new Date(),
+                photo: currentPhotoBase64
+            };
+
+            records.unshift(record);
+            firestoreSaveRecord(record);
+            dietForm.reset();
+            currentPhotoBase64 = null;
+            photoPreviewContainer.style.display = 'none';
+            photoPreview.src = '';
+            updateUI();
+        });
+
+        // Photo Modal Global Functions
+        window.openPhotoModal = function (src) {
+            const modal = document.getElementById('photo-modal');
+            const modalImg = document.getElementById('modal-image');
+            modalImg.src = src;
+            modal.classList.add('show');
+        };
+
+        const modalOverlay = document.getElementById('photo-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        closeModalBtn.addEventListener('click', () => {
+            modalOverlay.classList.remove('show');
+        });
+
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('show');
+            }
+        });
+
+        // Water Global Functions
+        window.addWater = function (amount) {
+            const record = {
+                id: Date.now().toString(),
+                category: 'water',
+                amount: Math.ceil(amount),
+                timestamp: new Date()
+            };
+            records.unshift(record);
+            firestoreSaveRecord(record);
+            updateUI();
+        };
+
+        window.addManualWater = function () {
+            const val = parseFloat(document.getElementById('manual-water').value);
+            if (!isNaN(val) && val > 0) {
+                addWater(val);
+                document.getElementById('manual-water').value = '';
+            }
+        };
+
+        // Body Stats Functions
+        window.addBodyStats = function () {
+            const weightVal = parseFloat(document.getElementById('stats-weight').value);
+            const fatVal = parseFloat(document.getElementById('stats-fat').value);
+            if (!isNaN(weightVal) || !isNaN(fatVal)) {
+                const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+                const dateKey = new Date().toLocaleDateString('zh-TW', options);
+
+                if (!bodyStats[dateKey]) bodyStats[dateKey] = {};
+                if (!isNaN(weightVal)) bodyStats[dateKey].weight = weightVal.toFixed(1);
+                if (!isNaN(fatVal)) bodyStats[dateKey].fat = fatVal.toFixed(1);
+
+                firestoreSaveBodyStat(dateKey, bodyStats[dateKey]);
+                updateUI();
+                alert(`✅ 已儲存 ${dateKey} 之數據`);
+                document.getElementById('stats-weight').value = '';
+                document.getElementById('stats-fat').value = '';
+            } else {
+                alert("請輸入有效的體重或體脂肪數字");
+            }
+        };
+
+        // Protein Goal — load from localStorage as instant fallback;
+        // Firestore value is applied (overrides) inside loadFromFirestore().
+        try {
+            const savedGoal = localStorage.getItem('fitTrackProteinGoal');
+            if (savedGoal) document.getElementById('protein-goal-input').value = savedGoal;
+        } catch (e) { }
+
+        window.saveProteinGoal = function () {
+            const val = document.getElementById('protein-goal-input').value;
+            try { localStorage.setItem('fitTrackProteinGoal', val); } catch (e) { }
+            firestoreSaveSetting('proteinGoal', val);
+            renderHistory(); // re-render with new goal
+        };
+
+        // Global delete function
+        window.deleteRecord = function (id) {
+            const index = records.findIndex(r => r.id === id);
+            if (index !== -1) {
+                records.splice(index, 1);
+                firestoreDeleteRecord(id);   // cloud delete (async, non-blocking)
+                updateUI();
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            try {
+                localStorage.setItem('fitTrackRecords', JSON.stringify(records));
+                localStorage.setItem('fitTrackBodyStats', JSON.stringify(bodyStats));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                    alert('⚠️ 瀏覽器儲存空間已滿！請點擊「匯出本月報表」將紀錄備份，然後從清單中刪除些許含有照片的舊紀錄以釋放空間。');
+                } else {
+                    console.error("Local storage save fail", e);
+                }
+            }
+            renderHistory();
+            updateDashboard();
+            renderTrendChart();
+        }
+
+        let trendChartInstance = null;
+        function renderTrendChart() {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            const allDateKeys = new Set([...Object.keys(bodyStats)]);
+            records.forEach(r => {
+                const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+                allDateKeys.add(new Date(r.timestamp).toLocaleDateString('zh-TW', options));
+            });
+
+            const sortedDates = Array.from(allDateKeys).sort((a, b) => {
+                const dateA = new Date(a.split(' ')[0]);
+                const dateB = new Date(b.split(' ')[0]);
+                return dateA - dateB;
+            });
+
+            // get last 30 entries
+            const chartDates = sortedDates.slice(-30);
+            const labels = chartDates.map(d => d.split(' ')[0].substring(5)); // Extract MM/DD
+
+            const weightData = chartDates.map(d => bodyStats[d]?.weight || null);
+            const fatData = chartDates.map(d => bodyStats[d]?.fat || null);
+
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+
+            Chart.defaults.color = '#7f8c8d';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '體重 (kg)',
+                            data: weightData,
+                            borderColor: '#2980b9',
+                            backgroundColor: 'rgba(41, 128, 185, 0.08)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            tension: 0.35,
+                            spanGaps: true,
+                            yAxisID: 'y',
+                            fill: true
+                        },
+                        {
+                            label: '體脂 (%)',
+                            data: fatData,
+                            borderColor: '#e67e22',
+                            backgroundColor: 'rgba(230, 126, 34, 0.08)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            tension: 0.35,
+                            spanGaps: true,
+                            yAxisID: 'y1',
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: { size: 13, weight: '600' },
+                                color: '#2c3e50',
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#ffffff',
+                            titleColor: '#2c3e50',
+                            bodyColor: '#7f8c8d',
+                            borderColor: '#efefef',
+                            borderWidth: 1,
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            ticks: { font: { size: 12 }, color: '#7f8c8d' }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(0,0,0,0.04)' },
+                            ticks: { font: { size: 12 }, color: '#7f8c8d' },
+                            title: {
+                                display: true,
+                                text: '體重 (kg)',
+                                color: '#2980b9',
+                                font: { size: 13, weight: '600' }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { size: 12 }, color: '#7f8c8d' },
+                            title: {
+                                display: true,
+                                text: '體脂 (%)',
+                                color: '#e67e22',
+                                font: { size: 13, weight: '600' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHistory() {
+            // Remove all existing date cards
+            const existingCards = historyContainer.querySelectorAll('.date-card');
+            existingCards.forEach(c => c.remove());
+
+            if (records.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            // Group by date
+            const grouped = {};
+            const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+
+            records.forEach(record => {
+                const dateObj = new Date(record.timestamp);
+                const dateKey = dateObj.toLocaleDateString('zh-TW', options);
+
+                if (!grouped[dateKey]) {
+                    grouped[dateKey] = {
+                        dateStr: dateKey,
+                        items: [],
+                        totalLoad: 0,
+                        totalCals: 0,
+                        totalWater: 0,
+                        totalProtein: 0
+                    };
+                }
+
+                grouped[dateKey].items.push(record);
+
+                if (record.category === 'exercise') {
+                    grouped[dateKey].totalLoad += record.load;
+                } else if (record.category === 'diet') {
+                    grouped[dateKey].totalCals = Math.ceil(grouped[dateKey].totalCals + record.calories);
+                    grouped[dateKey].totalProtein += record.protein;
+                } else if (record.category === 'water') {
+                    grouped[dateKey].totalWater += record.amount;
+                }
+            });
+
+            const sortedDateKeys = Object.keys(grouped).sort((a, b) => {
+                // simple split parse for string like "2026/03/03 星期二"
+                const dateA = new Date(a.split(' ')[0]);
+                const dateB = new Date(b.split(' ')[0]);
+                return dateB - dateA;
+            });
+
+            sortedDateKeys.forEach(dateKey => {
+                const group = grouped[dateKey];
+                const card = document.createElement('div');
+                card.className = 'date-card';
+
+                const waterPercent = Math.min(100, Math.round((group.totalWater / 2000) * 100));
+
+                const proteinGoal = parseInt(document.getElementById('protein-goal-input').value) || 120;
+                const totalProteinCeil = Math.ceil(group.totalProtein);
+                const proteinPercent = Math.min(100, Math.round((totalProteinCeil / proteinGoal) * 100));
+                const proteinMet = totalProteinCeil >= proteinGoal;
+                const proteinOverflow = totalProteinCeil > proteinGoal * 1.2;
+                const proteinFillColor = proteinOverflow ? '#e74c3c' : (proteinMet ? '#2ecc71' : '#f39c12');
+                const proteinBarExtra = proteinOverflow ? 'animation:blink 0.8s step-start infinite;' : '';
+                const proteinRemaining = Math.max(0, proteinGoal - totalProteinCeil);
+                const waterRemaining = Math.max(0, 2000 - group.totalWater);
+
+                const stats = bodyStats[dateKey];
+                const weightPill = stats?.weight ? `<div class="date-stat-pill stat-weight">⚖️ 體重 <span class="pill-val">${stats.weight} kg</span></div>` : '';
+                const fatPill = stats?.fat ? `<div class="date-stat-pill stat-fat">🔬 體脂 <span class="pill-val">${stats.fat} %</span></div>` : '';
+
+                const header = document.createElement('div');
+                header.className = 'date-card-header';
+                header.innerHTML = `
+                    <!-- Row 1: Date -->
+                    <h3>📅 ${group.dateStr}</h3>
+
+                    <!-- Row 2: Stats pills -->
+                    <div class="date-stats-row">
+                        ${weightPill}${fatPill}
+                        <div class="date-stat-pill stat-load">💪 負荷 <span class="pill-val">${group.totalLoad}</span> Load</div>
+                        <div class="date-stat-pill stat-cals">🔥 熱量 <span class="pill-val">${Math.ceil(group.totalCals)}</span> kcal</div>
+                    </div>
+
+                    <!-- Row 3: Progress bars -->
+                    <div class="date-progress-row">
+                        <div class="progress-group">
+                            <label>
+                                <span style="color:#3498db;font-size:0.85rem;">💧 飲水: ${group.totalWater} / 2000 cc</span>
+                                <span style="color:var(--text-secondary);font-size:0.78rem;">${group.totalWater >= 2000 ? '已達成 ✅' : '還差 ' + waterRemaining + ' cc'}</span>
+                            </label>
+                            <div class="prog-bar">
+                                <div class="prog-fill" style="width:${waterPercent}%;background:#3498db;"></div>
+                            </div>
+                        </div>
+                        <div class="progress-group">
+                            <label>
+                                <span style="color:${proteinFillColor};font-size:0.85rem;">🍖 蛋白: ${totalProteinCeil} / ${proteinGoal} g</span>
+                                <span style="color:var(--text-secondary);font-size:0.78rem;">${proteinMet ? '已達成目標 ✅' : '還差 ' + proteinRemaining + 'g'}</span>
+                            </label>
+                            <div class="prog-bar">
+                                <div class="prog-fill" style="width:${proteinPercent}%;background:${proteinFillColor};${proteinBarExtra}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                card.appendChild(header);
+
+                // Separate records by type
+                const exerciseItems = group.items.filter(r => r.category === 'exercise');
+                const waterItems = group.items.filter(r => r.category === 'water');
+                const dietItems = group.items.filter(r => r.category === 'diet');
+
+                // Helper: build a single record div
+                function buildExerciseDiv(record) {
+                    const d = document.createElement('div');
+                    d.className = 'record-item exercise';
+                    d.innerHTML = `
+                        <div class="record-info">
+                            <div class="record-title">🏃‍♂️ ${record.type}</div>
+                            <div class="record-details">${record.time} 分鐘</div>
+                        </div>
+                        <div class="item-right">
+                            <div class="record-value">${record.load} Load</div>
+                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                刪除
+                            </button>
+                        </div>`;
+                    return d;
+                }
+
+                function buildDietDiv(record) {
+                    const isVeggie = record.group === '蔬菜類';
+                    const d = document.createElement('div');
+                    d.className = `record-item diet${isVeggie ? ' vegetable' : ''}`;
+                    const photoHtml = record.photo ? `<img src="${record.photo}" class="record-photo-thumb" onclick="openPhotoModal('${record.photo}')" alt="Photo">` : '';
+                    d.innerHTML = `
+                        <div style="display:flex;align-items:center;">
+                            ${photoHtml}
+                            <div class="record-info">
+                                <div class="record-title">🥗 ${record.name}</div>
+                                <div class="record-details">蛋白: <span style="color:#f39c12;font-weight:700;">${record.protein}g</span> | 碳水: ${record.carbs}g | 脂肪: ${record.fat}g</div>
+                            </div>
+                        </div>
+                        <div class="item-right">
+                            <div class="record-value">${Math.ceil(record.calories)} kcal</div>
+                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                刪除
+                            </button>
+                        </div>`;
+                    return d;
+                }
+
+                function buildWaterDiv(record) {
+                    const d = document.createElement('div');
+                    d.className = 'record-item water';
+                    d.innerHTML = `
+                        <div class="record-info">
+                            <div class="record-title" style="color:#3498db;">💧 飲水增加</div>
+                        </div>
+                        <div class="item-right">
+                            <div class="record-value" style="color:#3498db;">${record.amount} cc</div>
+                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                刪除
+                            </button>
+                        </div>`;
+                    return d;
+                }
+
+                // Render exercise block first
+                if (exerciseItems.length > 0) {
+                    const exHeader = document.createElement('div');
+                    exHeader.className = 'meal-period-header';
+                    exHeader.innerHTML = '💪 運動紀錄';
+                    card.appendChild(exHeader);
+                    exerciseItems.forEach(r => card.appendChild(buildExerciseDiv(r)));
+                }
+
+                // Render diet items grouped by meal period
+                const MEAL_ORDER = ['早餐', '午餐', '晚餐', '點心/其他'];
+                const MEAL_EMOJI = { '早餐': '🍅', '午餐': '🍛', '晚餐': '🌙', '點心/其他': '🍪' };
+
+                // Collect all unique meal periods in this day (respecting meal order)
+                const periodsInDay = MEAL_ORDER.filter(p => dietItems.some(r => (r.mealPeriod || '午餐') === p));
+                // Add any unlabeled or non-standard ones at the end
+                dietItems.forEach(r => {
+                    const mp = r.mealPeriod || '午餐';
+                    if (!periodsInDay.includes(mp)) periodsInDay.push(mp);
+                });
+
+                periodsInDay.forEach(period => {
+                    const periodItems = dietItems.filter(r => (r.mealPeriod || '午餐') === period);
+                    if (periodItems.length === 0) return;
+
+                    const periodHeader = document.createElement('div');
+                    periodHeader.className = 'meal-period-header';
+                    periodHeader.textContent = `${MEAL_EMOJI[period] || '🍴'} ${period}`;
+                    card.appendChild(periodHeader);
+
+                    periodItems.forEach(r => card.appendChild(buildDietDiv(r)));
+                });
+
+                // Render water entries at the bottom
+                if (waterItems.length > 0) {
+                    waterItems.forEach(r => card.appendChild(buildWaterDiv(r)));
+                }
+
+                historyContainer.appendChild(card);
+            });
+        }
+
+        function updateDashboard() {
+            let totalCals = 0;
+            let totalCarbsVal = 0;
+            let totalProteinVal = 0;
+            let totalFatVal = 0;
+
+            let totalLoadVal = 0;
+            let totalTimeVal = 0;
+
+            records.forEach(record => {
+                if (record.category === 'diet') {
+                    totalCals += record.calories;
+                    totalCarbsVal += record.carbs;
+                    totalProteinVal += record.protein;
+                    totalFatVal += record.fat;
+                } else if (record.category === 'exercise') {
+                    totalLoadVal += record.load;
+                    totalTimeVal += record.time;
+                }
+            });
+
+            // Update targets for animation
+            counterElements.totalCalories.target = Math.ceil(totalCals);
+            counterElements.totalCarbs.target = totalCarbsVal;
+            counterElements.totalProtein.target = totalProteinVal;
+            counterElements.totalFat.target = totalFatVal;
+            counterElements.totalLoad.target = totalLoadVal;
+            counterElements.totalTime.target = totalTimeVal;
+
+            triggerAnimations();
+        }
+
+        // Export Functionality
+        document.getElementById('export-excel-btn').addEventListener('click', () => {
+            const mInput = document.getElementById('export-month').value;
+            if (!mInput) { alert('請先選擇要匯出的月份！'); return; }
+
+            const [year, month] = mInput.split('-');
+            const targetYear = parseInt(year);
+            const targetMonth = parseInt(month) - 1;
+
+            const monthRecords = records.filter(r => {
+                const d = new Date(r.timestamp);
+                return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+            });
+
+            if (monthRecords.length === 0) { alert('該月份沒有任何紀錄可以匯出！'); return; }
+
+            // ── PASS 1: Pre-compute daily aggregates ───────────────────────
+            const dailyTotals = {}; // keyed by dateStr
+            monthRecords.forEach(r => {
+                const k = new Date(r.timestamp).toLocaleDateString('zh-TW');
+                if (!dailyTotals[k]) {
+                    dailyTotals[k] = { cals: 0, carbs: 0, protein: 0, fat: 0, water: 0, load: 0 };
+                }
+                if (r.category === 'diet') {
+                    dailyTotals[k].cals += r.calories || 0;
+                    dailyTotals[k].carbs += r.carbs || 0;
+                    dailyTotals[k].protein += r.protein || 0;
+                    dailyTotals[k].fat += r.fat || 0;
+                } else if (r.category === 'water') {
+                    dailyTotals[k].water += r.amount || 0;
+                } else if (r.category === 'exercise') {
+                    dailyTotals[k].load += r.load || 0;
+                }
+            });
+
+            // ── PASS 2: Sort records ────────────────────────────────────────
+            const MEAL_ORDER = ['早餐', '午餐', '晚餐', '點心/其他', '運動', '飲水'];
+            const mealRank = p => { const i = MEAL_ORDER.indexOf(p); return i === -1 ? 99 : i; };
+
+            const sorted = [...monthRecords].sort((a, b) => {
+                const da = new Date(a.timestamp), db = new Date(b.timestamp);
+                if (da.toDateString() !== db.toDateString()) return db - da; // newest first
+                const pa = a.category === 'exercise' ? '運動' : a.category === 'water' ? '飲水' : (a.mealPeriod || '午餐');
+                const pb = b.category === 'exercise' ? '運動' : b.category === 'water' ? '飲水' : (b.mealPeriod || '午餐');
+                return mealRank(pa) - mealRank(pb);
+            });
+
+            // ── PASS 3: Build rows ──────────────────────────────────────────
+            const rows = sorted.map(r => {
+                const dateStr = new Date(r.timestamp).toLocaleDateString('zh-TW');
+                const dt = dailyTotals[dateStr];
+
+                // ── Body stats: match key using SAME format as addBodyStats ──
+                const statsDateOptions = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+                const statsDateKey = new Date(r.timestamp).toLocaleDateString('zh-TW', statsDateOptions);
+                const bStats = bodyStats[statsDateKey] || {};
+
+                // Shared daily total columns (all integers)
+                const dailyCols = {
+                    '當日總熱量(kcal)': Math.ceil(dt.cals),
+                    '當日總碳水(g)': Math.ceil(dt.carbs),
+                    '當日總蛋白(g)': Math.ceil(dt.protein),
+                    '當日總脂肪(g)': Math.ceil(dt.fat),
+                    '當日總飲水(cc)': Math.ceil(dt.water),
+                    '當日總負荷': Math.ceil(dt.load)
+                };
+
+                const bodyStatsCols = {
+                    '體重(kg)': bStats.weight ? parseFloat(bStats.weight).toFixed(1) : '未紀錄',
+                    '體脂(%)': bStats.fat ? parseFloat(bStats.fat).toFixed(1) : '未紀錄'
+                };
+
+                if (r.category === 'exercise') {
+                    return {
+                        '日期': dateStr,
+                        ...bodyStatsCols,
+                        '時段': '運動',
+                        '項目名稱': r.type,
+                        '份量': `${r.time} 分鐘`,
+                        '單項負荷': r.load,
+                        '單項熱量(kcal)': 0,
+                        ...dailyCols
+                    };
+                } else if (r.category === 'diet') {
+                    const gramsMatch = r.name.match(/\((\d+(?:\.\d+)?)g\)/);
+                    return {
+                        '日期': dateStr,
+                        ...bodyStatsCols,
+                        '時段': r.mealPeriod || '午餐',
+                        '項目名稱': r.name,
+                        '份量': gramsMatch ? gramsMatch[1] + 'g' : '-',
+                        '單項負荷': 0,
+                        '單項熱量(kcal)': Math.ceil(r.calories),
+                        ...dailyCols
+                    };
+                } else {
+                    return {
+                        '日期': dateStr,
+                        ...bodyStatsCols,
+                        '時段': '飲水',
+                        '項目名稱': '飲水紀錄',
+                        '份量': `${r.amount} cc`,
+                        '單項負荷': 0,
+                        '單項熱量(kcal)': 0,
+                        ...dailyCols
+                    };
+                }
+            });
+
+            // ── Build workbook ──────────────────────────────────────────────
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws['!cols'] = [
+                { wch: 14 }, // 日期
+                { wch: 10 }, // 體重
+                { wch: 9 }, // 體脂
+                { wch: 10 }, // 時段
+                { wch: 24 }, // 項目名稱
+                { wch: 10 }, // 份量
+                { wch: 10 }, // 單項負荷
+                { wch: 14 }, // 單項熱量
+                { wch: 14 }, // 當日總熱量
+                { wch: 13 }, // 當日總碳水
+                { wch: 13 }, // 當日總蛋白
+                { wch: 13 }, // 當日總脂肪
+                { wch: 14 }, // 當日總飲水
+                { wch: 12 }  // 當日總負荷
+            ];
+            XLSX.utils.book_append_sheet(wb, ws, '健康日誌明細');
+
+            // Filename: 健康紀錄報表_YYYYMMDD.xlsx (today's date)
+            const today = new Date();
+            const stamp = today.getFullYear().toString()
+                + String(today.getMonth() + 1).padStart(2, '0')
+                + String(today.getDate()).padStart(2, '0');
+            XLSX.writeFile(wb, `健康紀錄報表_${stamp}.xlsx`);
+        });
+
+        // Init Data Load (mock starting data based on instructions)
+        function setDefaultMonth() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('export-month').value = `${y} -${m}`;
+        }
+
+        // Auto-select meal period based on current hour
+        function setDefaultMealPeriod() {
+            const h = new Date().getHours();
+            let period;
+            if (h < 10) period = '早餐';       // 00:00–09:59
+            else if (h < 17) period = '午餐';       // 10:00–16:59
+            else if (h >= 17 && h <= 21) period = '晚餐';       // 17:00–21:59
+            else period = '點心/其他';  // 22:00–23:59
+            const sel = document.getElementById('diet-meal-period');
+            if (sel) sel.value = period;
+        }
+
+        // ─── Init ─────────────────────────────────────────────────────────
+        setDefaultMonth();
+        setDefaultMealPeriod();
+        renderFoodOptions();
+        updateUI();          // instant local render (from localStorage)
+        loadFromFirestore(); // async: fetches cloud data, re-renders when ready
+    </script>
+</body>
+
+</html>
