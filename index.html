@@ -440,27 +440,94 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         }
 
-        .history-section h2 {
-            margin-bottom: 2rem;
+        /* Accordion toggle header */
+        .history-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: 1px solid #efefef;
+            border-radius: 10px;
+            padding: 0.75rem 1.2rem;
+            margin-bottom: 1.2rem;
+            user-select: none;
+            transition: background 0.2s ease;
+        }
+
+        .history-toggle:hover {
+            background: #eff2f5;
+        }
+
+        .history-toggle .ht-label {
+            font-size: 0.95rem;
+            font-weight: 700;
             color: var(--text-main);
-            font-size: 1.8rem;
+            letter-spacing: 0.02em;
+        }
+
+        .history-toggle .ht-arrow {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        /* Collapsed state */
+        .history-grouped-container {
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(.4, 0, .2, 1),
+                opacity 0.25s ease;
+            opacity: 1;
+        }
+
+        .history-grouped-container.collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+        }
+
+        .history-toggle.collapsed .ht-arrow {
+            transform: rotate(-90deg);
         }
 
         .history-grouped-container {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1rem;
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+            /* breathing room for scrollbar */
+            scroll-behavior: smooth;
+        }
+
+        /* Thin Nordic scrollbar */
+        .history-grouped-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .history-grouped-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .history-grouped-container::-webkit-scrollbar-thumb {
+            background: #dde1e7;
+            border-radius: 4px;
+        }
+
+        .history-grouped-container::-webkit-scrollbar-thumb:hover {
+            background: #b0b8c4;
         }
 
         .date-card {
             background: var(--panel-bg);
             border: 1px solid var(--panel-border);
             border-radius: 16px;
-            padding: 1.5rem;
+            padding: 1.2rem;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
-            gap: 1.2rem;
+            gap: 0.7rem;
         }
 
         .date-card-header {
@@ -576,8 +643,8 @@
             justify-content: space-between;
             align-items: center;
             background: #f8f9fa;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
+            padding: 0.65rem 1.2rem;
+            border-radius: 10px;
             transition: all 0.2s ease;
         }
 
@@ -748,6 +815,125 @@
             border-left: 5px solid #3498db;
         }
 
+        /* ─── Record Accordion ─────────────────────────────────────── */
+        .record-item {
+            cursor: pointer;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .ri-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 1.1rem;
+            gap: 0.5rem;
+            transition: background 0.2s ease;
+        }
+
+        .record-item:hover .ri-header {
+            background: rgba(0, 0, 0, 0.025);
+        }
+
+        .record-item.expanded .ri-header {
+            background: rgba(41, 128, 185, 0.05);
+        }
+
+        .ri-name {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-main);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ri-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .ri-toggle {
+            font-size: 0.65rem;
+            color: #b0b8c4;
+            margin-left: 0.4rem;
+            transition: transform 0.25s ease;
+            display: inline-block;
+        }
+
+        .record-item.expanded .ri-toggle {
+            transform: rotate(90deg);
+        }
+
+        /* Expandable detail panel */
+        .ri-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.28s cubic-bezier(.4, 0, .2, 1),
+                opacity 0.2s ease;
+            opacity: 0;
+            border-top: 0px solid transparent;
+            background: rgba(41, 128, 185, 0.03);
+        }
+
+        .record-item.expanded .ri-body {
+            max-height: 200px;
+            opacity: 1;
+            border-top: 1px solid #efefef;
+        }
+
+        .ri-body-inner {
+            padding: 0.55rem 1.1rem 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .ri-detail-row {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .ri-chip {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            background: #f0f2f5;
+            border-radius: 12px;
+            padding: 0.2rem 0.55rem;
+        }
+
+        .ri-chip strong {
+            color: var(--text-main);
+        }
+
+        .ri-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .ri-delete:hover {
+            background: #fdecea;
+        }
+
+        /* ──────────────────────────────────────────────── */
+
         .meal-period-header {
             font-size: 0.85rem;
             font-weight: 700;
@@ -759,6 +945,84 @@
             padding: 0.45rem 0.9rem;
             margin: 0.8rem 0 0.2rem 0;
         }
+
+        /* ─── Period-Group Accordion ────────────────────────────────── */
+        .period-group {
+            border: 1px solid #efefef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .period-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.55rem 1rem;
+            background: #f8f9fa;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s ease;
+            gap: 0.5rem;
+        }
+
+        .period-group-header:hover {
+            background: #eff2f5;
+        }
+
+        .period-group.open .period-group-header {
+            background: #f0f4ff;
+            border-bottom: 1px solid #e8ecf4;
+        }
+
+        .pg-label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+            flex: 1;
+        }
+
+        .pg-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .pg-chip {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: #e8ecf4;
+            border-radius: 12px;
+            padding: 0.15rem 0.55rem;
+            white-space: nowrap;
+        }
+
+        .pg-arrow {
+            font-size: 0.62rem;
+            color: #b0b8c4;
+            transition: transform 0.25s ease;
+            margin-left: 0.2rem;
+        }
+
+        .period-group.open .pg-arrow {
+            transform: rotate(90deg);
+        }
+
+        .period-group-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .period-group.open .period-group-body {
+            max-height: 800px;
+        }
+
+        .period-group-body .record-item:not(:last-child) {
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        /* ──────────────────────────────────────────────── */
 
         .exercise .record-value {
             color: var(--accent-exercise);
@@ -1324,7 +1588,11 @@
 
         <!-- History Section -->
         <section class="history-section">
-            <h2>📜 每日健康日誌</h2>
+            <!-- Accordion toggle header -->
+            <div class="history-toggle" id="history-toggle-btn">
+                <span class="ht-label">🗒️ 今日紀錄明細</span>
+                <span class="ht-arrow">⌄</span>
+            </div>
             <div id="history-container" class="history-grouped-container">
                 <div id="empty-state" class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -2195,6 +2463,8 @@
 
             sortedDateKeys.forEach(dateKey => {
                 const group = grouped[dateKey];
+                // Sort items newest-first within each day
+                group.items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 const card = document.createElement('div');
                 card.className = 'date-card';
 
@@ -2218,16 +2488,9 @@
                 header.className = 'date-card-header';
                 header.innerHTML = `
                     <!-- Row 1: Date -->
-                    <h3>📅 ${group.dateStr}</h3>
+                    <h3 style="font-weight:900;">📅 ${group.dateStr}</h3>
 
-                    <!-- Row 2: Stats pills -->
-                    <div class="date-stats-row">
-                        ${weightPill}${fatPill}
-                        <div class="date-stat-pill stat-load">💪 負荷 <span class="pill-val">${group.totalLoad}</span> Load</div>
-                        <div class="date-stat-pill stat-cals">🔥 熱量 <span class="pill-val">${Math.ceil(group.totalCals)}</span> kcal</div>
-                    </div>
-
-                    <!-- Row 3: Progress bars -->
+                    <!-- Row 2: Progress bars (pills row removed) -->
                     <div class="date-progress-row">
                         <div class="progress-group">
                             <label>
@@ -2256,101 +2519,164 @@
                 const waterItems = group.items.filter(r => r.category === 'water');
                 const dietItems = group.items.filter(r => r.category === 'diet');
 
-                // Helper: build a single record div
+                // Helper: add accordion toggle behaviour
+                function makeAccordion(el) {
+                    el.addEventListener('click', e => {
+                        // Don't collapse when clicking the delete button itself
+                        if (e.target.closest('.ri-delete')) return;
+                        el.classList.toggle('expanded');
+                    });
+                    return el;
+                }
+
+                // Format timestamp to HH:MM
+                function fmtTime(ts) {
+                    const d = new Date(ts);
+                    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                }
+
+                // Helper: build a trash SVG string
+                const trashSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+
                 function buildExerciseDiv(record) {
                     const d = document.createElement('div');
                     d.className = 'record-item exercise';
                     d.innerHTML = `
-                        <div class="record-info">
-                            <div class="record-title">🏃‍♂️ ${record.type}</div>
-                            <div class="record-details">${record.time} 分鐘</div>
+                        <div class="ri-header">
+                            <span class="ri-name">🏃‍♂️ ${record.type}</span>
+                            <span class="ri-value">${record.load} Load</span>
+                            <span class="ri-toggle">❯</span>
                         </div>
-                        <div class="item-right">
-                            <div class="record-value">${record.load} Load</div>
-                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                                刪除
-                            </button>
+                        <div class="ri-body">
+                            <div class="ri-body-inner">
+                                <div class="ri-detail-row">
+                                    <span class="ri-chip">⏱ <strong>${record.time}</strong> 分鐘</span>
+                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                </div>
+                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                            </div>
                         </div>`;
-                    return d;
+                    return makeAccordion(d);
                 }
 
                 function buildDietDiv(record) {
                     const isVeggie = record.group === '蔬菜類';
                     const d = document.createElement('div');
                     d.className = `record-item diet${isVeggie ? ' vegetable' : ''}`;
-                    const photoHtml = record.photo ? `<img src="${record.photo}" class="record-photo-thumb" onclick="openPhotoModal('${record.photo}')" alt="Photo">` : '';
+                    // Extract weight from name string like "雞腿排(去皮) (180g)"
+                    const weightMatch = record.name.match(/(\d+(?:\.\d+)?)g\)$/);
+                    const weightStr = weightMatch ? weightMatch[1] + 'g' : '';
                     d.innerHTML = `
-                        <div style="display:flex;align-items:center;">
-                            ${photoHtml}
-                            <div class="record-info">
-                                <div class="record-title">🥗 ${record.name}</div>
-                                <div class="record-details">蛋白: <span style="color:#f39c12;font-weight:700;">${record.protein}g</span> | 碳水: ${record.carbs}g | 脂肪: ${record.fat}g</div>
-                            </div>
+                        <div class="ri-header">
+                            <span class="ri-name">🥗 ${record.name}</span>
+                            <span class="ri-value">${Math.ceil(record.calories)} kcal</span>
+                            <span class="ri-toggle">❯</span>
                         </div>
-                        <div class="item-right">
-                            <div class="record-value">${Math.ceil(record.calories)} kcal</div>
-                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                                刪除
-                            </button>
+                        <div class="ri-body">
+                            <div class="ri-body-inner">
+                                <div class="ri-detail-row">
+                                    <span class="ri-chip">🍖 <strong>${record.protein}g</strong> 蛋白</span>
+                                    <span class="ri-chip">🍞 ${record.carbs}g 碳水</span>
+                                    <span class="ri-chip">🧈 ${record.fat}g 脂肪</span>
+                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                </div>
+                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                            </div>
                         </div>`;
-                    return d;
+                    return makeAccordion(d);
                 }
 
                 function buildWaterDiv(record) {
                     const d = document.createElement('div');
                     d.className = 'record-item water';
                     d.innerHTML = `
-                        <div class="record-info">
-                            <div class="record-title" style="color:#3498db;">💧 飲水增加</div>
+                        <div class="ri-header">
+                            <span class="ri-name" style="color:#3498db;">💧 飲水</span>
+                            <span class="ri-value" style="color:#3498db;">${record.amount} cc</span>
+                            <span class="ri-toggle">❯</span>
                         </div>
-                        <div class="item-right">
-                            <div class="record-value" style="color:#3498db;">${record.amount} cc</div>
-                            <button class="btn-sm-delete" onclick="deleteRecord('${record.id}')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
-                                刪除
-                            </button>
+                        <div class="ri-body">
+                            <div class="ri-body-inner">
+                                <div class="ri-detail-row">
+                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                </div>
+                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                            </div>
                         </div>`;
-                    return d;
+                    return makeAccordion(d);
                 }
 
-                // Render exercise block first
+                const MEAL_ORDER = ['早餐', '午餐', '晵餐', '點心/其他'];
+                const MEAL_EMOJI = { '早餐': '☀️', '午餐': '☀️️', '晵餐': '🌙', '點心/其他': '🍪' };
+
+                /**
+                 * Build a collapsible period-group accordion.
+                 * @param {string} label      Display name
+                 * @param {string} emoji      Prefix emoji
+                 * @param {Array}  items      Record items for this group
+                 * @param {string[]} chips    Subtotal chip strings
+                 * @param {Function} buildFn  Record-item builder
+                 * @param {boolean} defaultOpen
+                 */
+                function buildPeriodGroup(label, emoji, items, chips, buildFn, defaultOpen = true) {
+                    const group = document.createElement('div');
+                    group.className = `period-group${defaultOpen ? ' open' : ''}`;
+
+                    const chipHtml = chips.map(c => `<span class="pg-chip">${c}</span>`).join('');
+                    const hdr = document.createElement('div');
+                    hdr.className = 'period-group-header';
+                    hdr.innerHTML = `
+                        <span class="pg-label">${emoji} ${label}</span>
+                        <div class="pg-meta">${chipHtml}<span class="pg-arrow">❯</span></div>`;
+                    hdr.addEventListener('click', () => group.classList.toggle('open'));
+
+                    const body = document.createElement('div');
+                    body.className = 'period-group-body';
+                    items.forEach(r => body.appendChild(buildFn(r)));
+
+                    group.appendChild(hdr);
+                    group.appendChild(body);
+                    return group;
+                }
+
+                // —— Exercise group ————————————————————————————
                 if (exerciseItems.length > 0) {
-                    const exHeader = document.createElement('div');
-                    exHeader.className = 'meal-period-header';
-                    exHeader.innerHTML = '💪 運動紀錄';
-                    card.appendChild(exHeader);
-                    exerciseItems.forEach(r => card.appendChild(buildExerciseDiv(r)));
+                    const exLoad = exerciseItems.reduce((s, r) => s + r.load, 0);
+                    const exTime = exerciseItems.reduce((s, r) => s + r.time, 0);
+                    card.appendChild(buildPeriodGroup(
+                        '運動紀錄', '💪', exerciseItems,
+                        [`${exLoad} Load`, `${exTime} 分鐘`],
+                        buildExerciseDiv, false
+                    ));
                 }
 
-                // Render diet items grouped by meal period
-                const MEAL_ORDER = ['早餐', '午餐', '晚餐', '點心/其他'];
-                const MEAL_EMOJI = { '早餐': '🍅', '午餐': '🍛', '晚餐': '🌙', '點心/其他': '🍪' };
-
-                // Collect all unique meal periods in this day (respecting meal order)
+                // —— Diet groups by meal period ———————————————————
                 const periodsInDay = MEAL_ORDER.filter(p => dietItems.some(r => (r.mealPeriod || '午餐') === p));
-                // Add any unlabeled or non-standard ones at the end
                 dietItems.forEach(r => {
                     const mp = r.mealPeriod || '午餐';
                     if (!periodsInDay.includes(mp)) periodsInDay.push(mp);
                 });
 
                 periodsInDay.forEach(period => {
-                    const periodItems = dietItems.filter(r => (r.mealPeriod || '午餐') === period);
-                    if (periodItems.length === 0) return;
-
-                    const periodHeader = document.createElement('div');
-                    periodHeader.className = 'meal-period-header';
-                    periodHeader.textContent = `${MEAL_EMOJI[period] || '🍴'} ${period}`;
-                    card.appendChild(periodHeader);
-
-                    periodItems.forEach(r => card.appendChild(buildDietDiv(r)));
+                    const pItems = dietItems.filter(r => (r.mealPeriod || '午餐') === period);
+                    if (pItems.length === 0) return;
+                    const pCals = pItems.reduce((s, r) => s + r.calories, 0);
+                    const pProt = pItems.reduce((s, r) => s + r.protein, 0);
+                    card.appendChild(buildPeriodGroup(
+                        period, MEAL_EMOJI[period] || '🍴', pItems,
+                        [`${Math.ceil(pCals)} kcal`, `${pProt.toFixed(1)}g 蛋白`],
+                        buildDietDiv, false
+                    ));
                 });
 
-                // Render water entries at the bottom
+                // —— Water group —————————————————————————————
                 if (waterItems.length > 0) {
-                    waterItems.forEach(r => card.appendChild(buildWaterDiv(r)));
+                    const wTotal = waterItems.reduce((s, r) => s + r.amount, 0);
+                    card.appendChild(buildPeriodGroup(
+                        '飲水', '💧', waterItems,
+                        [`${wTotal} cc`],
+                        buildWaterDiv, false
+                    ));
                 }
 
                 historyContainer.appendChild(card);
@@ -2560,6 +2886,15 @@
         setDefaultMonth();
         setDefaultMealPeriod();
         renderFoodOptions();
+
+        // Accordion toggle (default: expanded)
+        document.getElementById('history-toggle-btn').addEventListener('click', () => {
+            const btn = document.getElementById('history-toggle-btn');
+            const container = document.getElementById('history-container');
+            btn.classList.toggle('collapsed');
+            container.classList.toggle('collapsed');
+        });
+
         updateUI();          // instant local render (from localStorage)
         loadFromFirestore(); // async: fetches cloud data, re-renders when ready
     </script>
