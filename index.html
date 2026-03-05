@@ -1763,6 +1763,8 @@
                     style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--accent-protein); display:flex; align-items:center; gap:0.5rem;">
                     ⚖️ 紀錄體重與體脂</h3>
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <input type="date" id="stats-date"
+                        style="width: 140px; padding: 0.6rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main);">
                     <input type="number" id="stats-weight" placeholder="體重 (kg)" step="0.1"
                         style="width: 120px; padding: 0.6rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main);"
                         min="1">
@@ -1770,7 +1772,7 @@
                         style="width: 120px; padding: 0.6rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main);"
                         min="1">
                     <button class="submit-btn health-btn" type="button" onclick="addBodyStats()"
-                        style="width: auto; padding: 0.6rem 1.5rem; margin-top: 0; background: rgba(230,126,34,0.1); color: var(--accent-protein); border: 1px solid rgba(230,126,34,0.3);">儲存今日數據</button>
+                        style="width: auto; padding: 0.6rem 1.5rem; margin-top: 0; background: rgba(230,126,34,0.1); color: var(--accent-protein); border: 1px solid rgba(230,126,34,0.3);">儲存數據</button>
                 </div>
             </div>
 
@@ -1916,6 +1918,12 @@
             const inp = document.getElementById('record-date-input');
             inp.value = todayISO();
             inp.max = todayISO(); // disallow future dates
+
+            const statsInp = document.getElementById('stats-date');
+            if (statsInp) {
+                statsInp.value = todayISO();
+                statsInp.max = todayISO();
+            }
             updateDateViewingBadge();
         }
 
@@ -1998,11 +2006,13 @@
             } catch (e) { console.error(e); showSyncStatus('error'); }
         }
 
-        async function firestoreSaveBodyStat(dateKey, stat) {
+        async function firestoreSaveBodyStat(isoDate, dateKey, stat) {
             if (!currentUser) return;
             try {
-                await setDoc(doc(db, 'bodyStats', currentUser.uid + '_' + fKey(dateKey)),
-                    { ...stat, _dateKey: dateKey, userId: currentUser.uid });
+                // Ensure same day maps to exactly one document using userId_YYYY-MM-DD
+                const docId = currentUser.uid + '_' + isoDate;
+                await setDoc(doc(db, 'bodyStats', docId),
+                    { ...stat, _dateKey: dateKey, date: isoDate, userId: currentUser.uid });
             } catch (e) { console.error(e); showSyncStatus('error'); }
         }
 
@@ -2455,19 +2465,24 @@
 
         // Body Stats Functions
         window.addBodyStats = function () {
+            const dateVal = document.getElementById('stats-date').value || todayISO();
             const weightVal = parseFloat(document.getElementById('stats-weight').value);
             const fatVal = parseFloat(document.getElementById('stats-fat').value);
+
             if (!isNaN(weightVal) || !isNaN(fatVal)) {
+                // Formatting back to localized key "YYYY/MM/DD 星期X" for existing state grouping
+                const [y, m, d] = dateVal.split('-').map(Number);
+                const dObj = new Date(y, m - 1, d);
                 const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
-                const dateKey = new Date().toLocaleDateString('zh-TW', options);
+                const dateKey = dObj.toLocaleDateString('zh-TW', options);
 
                 if (!bodyStats[dateKey]) bodyStats[dateKey] = {};
                 if (!isNaN(weightVal)) bodyStats[dateKey].weight = weightVal.toFixed(1);
                 if (!isNaN(fatVal)) bodyStats[dateKey].fat = fatVal.toFixed(1);
 
-                firestoreSaveBodyStat(dateKey, bodyStats[dateKey]);
+                firestoreSaveBodyStat(dateVal, dateKey, bodyStats[dateKey]);
                 updateUI();
-                alert(`✅ 已儲存 ${dateKey} 之數據`);
+                alert(`✅ 已儲存 ${dateVal} 之數據`);
                 document.getElementById('stats-weight').value = '';
                 document.getElementById('stats-fat').value = '';
             } else {
@@ -2526,10 +2541,11 @@
                 allDateKeys.add(new Date(r.timestamp).toLocaleDateString('zh-TW', options));
             });
 
+            // Robust chronological sort (Oldest -> Newest)
             const sortedDates = Array.from(allDateKeys).sort((a, b) => {
-                const dateA = new Date(a.split(' ')[0]);
-                const dateB = new Date(b.split(' ')[0]);
-                return dateA - dateB;
+                const dateA = new Date(a.replace(/星期./, '').trim().replace(/-/g, '/'));
+                const dateB = new Date(b.replace(/星期./, '').trim().replace(/-/g, '/'));
+                return dateA.getTime() - dateB.getTime();
             });
 
             // get last 30 entries
