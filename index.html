@@ -63,7 +63,8 @@
         }
 
         header {
-            text-align: center;
+            display: flex;
+            align-items: center;
             margin-bottom: 0.5rem;
             animation: fadeInDown 0.8s ease-out;
         }
@@ -1132,7 +1133,8 @@
         }
 
         /* ─── Login Overlay ─────────────────────────────── */
-        #login-overlay {
+        /* ─── Auth Overlay (Google Sign-In) ─────────────────────────── */
+        #auth-overlay {
             position: fixed;
             inset: 0;
             background: #fcfcfc;
@@ -1140,118 +1142,98 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.35s ease;
         }
 
-        #login-overlay.hidden {
+        #auth-overlay.hidden {
             opacity: 0;
             pointer-events: none;
         }
 
-        #login-card {
+        #auth-card {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 1.2rem;
-            width: 300px;
+            gap: 1.4rem;
+            width: 320px;
             text-align: center;
         }
 
-        #login-card .lock-icon {
-            font-size: 2.8rem;
-            margin-bottom: 0.2rem;
+        #auth-card .auth-logo {
+            font-size: 3rem;
         }
 
-        #login-card h2 {
-            font-size: 1.6rem;
-            font-weight: 700;
+        #auth-card h2 {
+            font-size: 1.7rem;
+            font-weight: 800;
             color: #2c3e50;
             font-family: 'Outfit', sans-serif;
             margin: 0;
         }
 
-        #login-card p {
+        #auth-card p {
             color: #7f8c8d;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             margin: 0;
         }
 
-        #login-pwd {
-            width: 100%;
-            padding: 1rem 1.2rem;
-            border: 1px solid #efefef;
-            border-radius: 12px;
+        .google-signin-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.6rem;
             background: #fff;
-            color: #2c3e50;
-            font-size: 1.05rem;
-            outline: none;
-            text-align: center;
-            letter-spacing: 0.15em;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        #login-pwd:focus {
-            border-color: #2980b9;
-            box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.1);
-        }
-
-        #login-error {
-            color: #e74c3c;
-            font-size: 0.82rem;
-            display: none;
-            height: 1rem;
-        }
-
-        #login-btn {
-            width: 100%;
-            padding: 0.95rem;
-            background: #2c3e50;
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 700;
-            font-family: 'Outfit', sans-serif;
+            border: 1.5px solid #dadce0;
+            border-radius: 24px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #3c4043;
             cursor: pointer;
-            letter-spacing: 0.08em;
-            transition: background 0.25s, transform 0.15s;
+            transition: box-shadow 0.2s, background 0.2s;
+            width: 100%;
+            justify-content: center;
         }
 
-        #login-btn:hover {
-            background: #3d5166;
-            transform: translateY(-1px);
+        .google-signin-btn:hover {
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+            background: #f8f9fa;
         }
 
-        #login-btn:active {
-            transform: translateY(1px);
+        .google-signin-btn svg {
+            flex-shrink: 0;
         }
 
-        @keyframes shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            20% {
-                transform: translateX(-8px);
-            }
-
-            40% {
-                transform: translateX(8px);
-            }
-
-            60% {
-                transform: translateX(-6px);
-            }
-
-            80% {
-                transform: translateX(4px);
-            }
+        /* User badge in header */
+        #user-badge {
+            display: none;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
         }
 
-        .shake {
-            animation: shake 0.4s ease;
+        #user-badge img {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1.5px solid #efefef;
+        }
+
+        #signout-btn {
+            background: none;
+            border: 1px solid #efefef;
+            border-radius: 8px;
+            padding: 0.25rem 0.65rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        #signout-btn:hover {
+            background: #fdecea;
+            color: #e74c3c;
+            border-color: #f5c6c0;
         }
 
         /* ──────────────────────────────────────────────── */
@@ -1410,22 +1392,41 @@
 <body>
 
     <!-- ─── Login Overlay ──────────────────────────────────────── -->
-    <div id="login-overlay">
-        <div id="login-card">
-            <div class="lock-icon">🔒</div>
+    <!-- Google Auth Overlay -->
+    <div id="auth-overlay">
+        <div id="auth-card">
+            <div class="auth-logo">🏥</div>
             <h2>健康日誌</h2>
-            <p>請輸入密碼以繼續</p>
-            <input type="password" id="login-pwd" placeholder="密碼" autocomplete="current-password" autofocus>
-            <div id="login-error">密碼錯誤，請再試一次</div>
-            <button id="login-btn">進 入</button>
+            <p>請登入以安全存取你的個人健康資料</p>
+            <button class="google-signin-btn" id="google-signin-btn">
+                <!-- Google G logo -->
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#EA4335"
+                        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                    <path fill="#4285F4"
+                        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                    <path fill="#FBBC05"
+                        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                    <path fill="#34A853"
+                        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                </svg>
+                使用 Google 帳號登入
+            </button>
         </div>
     </div>
     <!-- ─────────────────────────────────────────────────────────── -->
 
     <div class="container">
         <header>
-            <h1>FitTrack Pro</h1>
-            <p style="color: var(--text-secondary); font-size: 1.1rem; letter-spacing: 0.5px;">運動與飲食智慧整合儀表板</p>
+            <div style="flex:1;">
+                <h1>FitTrack Pro</h1>
+                <p style="color: var(--text-secondary); font-size: 1.1rem; letter-spacing: 0.5px;">運動與飲食智慧整合儀表板</p>
+            </div>
+            <div id="user-badge">
+                <img id="user-avatar" src="" alt="avatar">
+                <span id="user-name"></span>
+                <button id="signout-btn">登出</button>
+            </div>
         </header>
 
         <!-- Export Section -->
@@ -1724,10 +1725,15 @@
         import { initializeApp }
             from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
         import {
-            getFirestore, collection, doc,
+            getFirestore, collection, doc, query, where,
             getDocs, getDoc, setDoc, deleteDoc
         }
             from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+        import {
+            getAuth, GoogleAuthProvider,
+            signInWithPopup, onAuthStateChanged, signOut
+        }
+            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyCTLBIVjxu2-HQ0dvCGiGjt3tvLNkmK57o",
@@ -1758,69 +1764,46 @@
             }
         }
 
-        // ─── Login / Session ─────────────────────────────────────────────────
-        /*
-         * 🔑 Change your password here:
-         */
-        const MY_PASSWORD = 'jamie';
-        const SESSION_KEY = 'fittrack_session';
-        const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+        // ─── Firebase Auth ────────────────────────────────────────────────
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        let currentUser = null;
 
-        /*
-         * ── Firebase Security Rules Reminder ──────────────────────────────────
-         * Go to: Firebase Console → Firestore Database → Rules tab
-         *
-         * Option A – Time-limited open access (good for development):
-         *   rules_version = '2';
-         *   service cloud.firestore {
-         *     match /databases/{database}/documents {
-         *       match /{document=**} {
-         *         allow read, write: if request.time < timestamp.date(2026, 6, 1);
-         *       }
-         *     }
-         *   }
-         *
-         * Option B – Require Firebase Authentication (recommended for production):
-         *   1. Firebase Console → Authentication → Sign-in method → enable Email/Password
-         *   2. Change rules to:
-         *         allow read, write: if request.auth != null;
-         *   3. Add Firebase Auth SDK import and signInWithEmailAndPassword() call.
-         * ─────────────────────────────────────────────────────────────────────
-         */
-
-        const loginOverlay = document.getElementById('login-overlay');
-        const loginPwd = document.getElementById('login-pwd');
-        const loginBtn = document.getElementById('login-btn');
-        const loginError = document.getElementById('login-error');
-
-        function unlockApp() {
-            loginOverlay.classList.add('hidden');
-            setTimeout(() => loginOverlay.style.display = 'none', 420);
+        /** Show main app, load user data */
+        function onSignedIn(user) {
+            currentUser = user;
+            document.getElementById('auth-overlay').classList.add('hidden');
+            setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 380);
+            // User badge
+            const badge = document.getElementById('user-badge');
+            const avatar = document.getElementById('user-avatar');
+            const name = document.getElementById('user-name');
+            badge.style.display = 'flex';
+            if (user.photoURL) avatar.src = user.photoURL; else avatar.style.display = 'none';
+            name.textContent = user.displayName || user.email;
+            // Load this user's data from Firestore
+            loadFromFirestore();
         }
 
-        function attemptLogin() {
-            if (loginPwd.value === MY_PASSWORD) {
-                try { localStorage.setItem(SESSION_KEY, JSON.stringify({ time: Date.now() })); } catch (e) { }
-                unlockApp();
-            } else {
-                loginError.style.display = 'block';
-                loginPwd.classList.add('shake');
-                loginPwd.value = '';
-                loginPwd.focus();
-                setTimeout(() => loginPwd.classList.remove('shake'), 450);
-            }
+        /** Show login screen, clear state */
+        function onSignedOut() {
+            currentUser = null;
+            records = []; bodyStats = {};
+            document.getElementById('user-badge').style.display = 'none';
+            const overlay = document.getElementById('auth-overlay');
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.remove('hidden'), 10);
+            updateUI();
         }
 
-        // Check for valid 24-hour session on load
-        (function checkSession() {
-            try {
-                const s = JSON.parse(localStorage.getItem(SESSION_KEY));
-                if (s && Date.now() - s.time < SESSION_DURATION) { unlockApp(); return; }
-            } catch (e) { }
-            // No valid session — show overlay and wire up inputs
-            loginBtn.addEventListener('click', attemptLogin);
-            loginPwd.addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
-        })();
+        onAuthStateChanged(auth, user => user ? onSignedIn(user) : onSignedOut());
+
+        document.getElementById('google-signin-btn').addEventListener('click', () =>
+            signInWithPopup(auth, provider).catch(err => console.error('Sign-in error:', err))
+        );
+        document.getElementById('signout-btn').addEventListener('click', () =>
+            signOut(auth)
+        );
         // ─── Data State ───────────────────────────────────────────────────
         let records = [];
         let bodyStats = {};
@@ -1907,9 +1890,10 @@
         function fKey(dateKey) { return dateKey.replace(/\//g, '-').replace(/\s+/g, '_'); }
 
         async function firestoreSaveRecord(record) {
+            if (!currentUser) return;
             showSyncStatus('syncing');
             try {
-                const data = { ...record, timestamp: record.timestamp.toISOString() };
+                const data = { ...record, userId: currentUser.uid, timestamp: record.timestamp.toISOString() };
                 await setDoc(doc(db, 'records', record.id), data);
                 showSyncStatus('done');
             } catch (e) { console.error(e); showSyncStatus('error'); }
@@ -1924,14 +1908,19 @@
         }
 
         async function firestoreSaveBodyStat(dateKey, stat) {
+            if (!currentUser) return;
             try {
-                await setDoc(doc(db, 'bodyStats', fKey(dateKey)), { ...stat, _dateKey: dateKey });
+                await setDoc(doc(db, 'bodyStats', currentUser.uid + '_' + fKey(dateKey)),
+                    { ...stat, _dateKey: dateKey, userId: currentUser.uid });
             } catch (e) { console.error(e); showSyncStatus('error'); }
         }
 
         async function firestoreSaveSetting(key, value) {
+            if (!currentUser) return;
             try {
-                await setDoc(doc(db, 'settings', 'user'), { [key]: value }, { merge: true });
+                // Per-user setting doc ID: uid_key
+                const docId = currentUser.uid + '_' + key;
+                await setDoc(doc(db, 'settings', docId), { userId: currentUser.uid, [key]: value });
             } catch (e) { console.error(e); }
         }
 
@@ -1940,12 +1929,17 @@
          * Falls back gracefully to localStorage if Firestore is unreachable.
          */
         async function loadFromFirestore() {
+            if (!currentUser) return;
             showSyncStatus('syncing');
             try {
+                const uid = currentUser.uid;
+                // Query only THIS user's records
+                const recQuery = query(collection(db, 'records'), where('userId', '==', uid));
+                const bsQuery = query(collection(db, 'bodyStats'), where('userId', '==', uid));
+                const settDoc = doc(db, 'settings', uid + '_proteinGoal');
+
                 const [recSnap, bsSnap, settSnap] = await Promise.all([
-                    getDocs(collection(db, 'records')),
-                    getDocs(collection(db, 'bodyStats')),
-                    getDoc(doc(db, 'settings', 'user'))
+                    getDocs(recQuery), getDocs(bsQuery), getDoc(settDoc)
                 ]);
 
                 // Records
@@ -1962,7 +1956,7 @@
                     cloudStats[key] = { weight: data.weight, fat: data.fat };
                 });
 
-                // Settings
+                // Per-user protein goal
                 if (settSnap.exists()) {
                     const goal = settSnap.data().proteinGoal;
                     if (goal) document.getElementById('protein-goal-input').value = goal;
@@ -1970,20 +1964,19 @@
 
                 showSyncStatus('done');
 
-                // Migration: if Firestore is empty but localStorage has data, offer migration
+                // Migration: if cloud empty but local has data, offer one-time migrate
                 if (cloudRecords.length === 0 && records.length > 0) {
                     if (confirm(`☁️ 雲端尚無資料，但偵測到 ${records.length} 筆本地紀錄。\n是否將本地紀錄一次性遷移到雲端？`)) {
                         showSyncStatus('syncing');
-                        const migrations = records.map(r => firestoreSaveRecord(r));
-                        const bodyMigrations = Object.entries(bodyStats).map(([k, v]) => firestoreSaveBodyStat(k, v));
-                        await Promise.all([...migrations, ...bodyMigrations]);
+                        await Promise.all([
+                            ...records.map(r => firestoreSaveRecord(r)),
+                            ...Object.entries(bodyStats).map(([k, v]) => firestoreSaveBodyStat(k, v))
+                        ]);
                         showSyncStatus('done');
                     }
                 } else {
-                    // Use cloud data
                     records = cloudRecords;
                     bodyStats = cloudStats;
-                    // Update local cache
                     try {
                         localStorage.setItem('fitTrackRecords', JSON.stringify(records));
                         localStorage.setItem('fitTrackBodyStats', JSON.stringify(bodyStats));
@@ -1994,7 +1987,6 @@
             } catch (e) {
                 console.error('Firestore load failed, using localStorage:', e);
                 showSyncStatus('error');
-                // Keep whatever loadFromLocalStorage() already put in memory
                 updateUI();
             }
         }
