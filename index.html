@@ -2054,7 +2054,7 @@
                 bsSnap.docs.forEach(d => {
                     const data = d.data();
                     const key = data._dateKey || d.id.replace(/-/g, '/').replace(/_/g, ' ');
-                    cloudStats[key] = { weight: data.weight, fat: data.fat };
+                    cloudStats[key] = { weight: data.weight, fat: data.fat, date: data.date };
                 });
 
                 // Per-user protein goal
@@ -2477,6 +2477,7 @@
                 const dateKey = dObj.toLocaleDateString('zh-TW', options);
 
                 if (!bodyStats[dateKey]) bodyStats[dateKey] = {};
+                bodyStats[dateKey].date = dateVal; // explicitly save the YYYY-MM-DD standard string
                 if (!isNaN(weightVal)) bodyStats[dateKey].weight = weightVal.toFixed(1);
                 if (!isNaN(fatVal)) bodyStats[dateKey].fat = fatVal.toFixed(1);
 
@@ -2535,25 +2536,53 @@
         function renderTrendChart() {
             const ctx = document.getElementById('trendChart').getContext('2d');
 
-            const allDateKeys = new Set([...Object.keys(bodyStats)]);
+            // 1. Gather all dates into a unified array of objects
+            const dataArray = [];
+
+            // Add all body stats dates
+            Object.keys(bodyStats).forEach(dateKey => {
+                const stat = bodyStats[dateKey];
+                if (!stat) return;
+
+                // Fallback for legacy data without strict "date" property
+                let dStr = stat.date;
+                if (!dStr) {
+                    const [y, m, d] = dateKey.split(' ')[0].split('/');
+                    dStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                }
+
+                dataArray.push({
+                    dateString: dStr,
+                    label: `${dStr.substring(5).replace('-', '/')}`, // MM/DD
+                    weight: stat.weight || null,
+                    fat: stat.fat || null
+                });
+            });
+
+            // Add all record dates (so days we worked out but didn't weigh in still show up on timeline)
             records.forEach(r => {
-                const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
-                allDateKeys.add(new Date(r.timestamp).toLocaleDateString('zh-TW', options));
+                const d = new Date(r.timestamp);
+                const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                // Only push if we don't already have this date in dataArray
+                if (!dataArray.some(item => item.dateString === dStr)) {
+                    dataArray.push({
+                        dateString: dStr,
+                        label: `${dStr.substring(5).replace('-', '/')}`,
+                        weight: null,
+                        fat: null
+                    });
+                }
             });
 
-            // Robust chronological sort (Oldest -> Newest)
-            const sortedDates = Array.from(allDateKeys).sort((a, b) => {
-                const dateA = new Date(a.replace(/星期./, '').trim().replace(/-/g, '/'));
-                const dateB = new Date(b.replace(/星期./, '').trim().replace(/-/g, '/'));
-                return dateA.getTime() - dateB.getTime();
-            });
+            // 2. Strict Object Array Sort (Chronological: Oldest to Newest)
+            dataArray.sort((a, b) => a.dateString.localeCompare(b.dateString));
 
-            // get last 30 entries
-            const chartDates = sortedDates.slice(-30);
-            const labels = chartDates.map(d => d.split(' ')[0].substring(5)); // Extract MM/DD
-
-            const weightData = chartDates.map(d => bodyStats[d]?.weight || null);
-            const fatData = chartDates.map(d => bodyStats[d]?.fat || null);
+            // 3. Map after sort for Chart.js
+            const chartData = dataArray.slice(-30);
+            const labels = chartData.map(d => d.label);
+            const weightData = chartData.map(d => d.weight);
+            const fatData = chartData.map(d => d.fat);
 
             if (trendChartInstance) {
                 trendChartInstance.destroy();
