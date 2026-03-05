@@ -1928,14 +1928,12 @@
         }
 
         function loadFromLocalStorage() {
+            // Nuke Local Storage on boot exactly as requested by user
             try {
-                const saved = localStorage.getItem('fitTrackRecords');
-                if (saved) records = JSON.parse(saved).map(r => ({ ...r, timestamp: new Date(r.timestamp) }));
-                const savedStats = localStorage.getItem('fitTrackBodyStats');
-                if (savedStats) bodyStats = JSON.parse(savedStats);
-            } catch (e) { console.error('LocalStorage read:', e); }
+                localStorage.clear();
+            } catch (e) { console.error('LocalStorage clear:', e); }
         }
-        loadFromLocalStorage(); // immediate local render
+        loadFromLocalStorage(); // wipe old cache
         let foodDatabase = [
             // 蛋白質與優格類
             { id: 'f1', name: '希臘優格', protein: 10, carbs: 3.6, fat: 0.4, note: '高蛋白', group: '蛋白質與優格類' },
@@ -2012,7 +2010,8 @@
                 // Ensure same day maps to exactly one document using userId_YYYY-MM-DD
                 const docId = currentUser.uid + '_' + isoDate;
                 await setDoc(doc(db, 'bodyStats', docId),
-                    { ...stat, _dateKey: dateKey, date: isoDate, userId: currentUser.uid });
+                    { ...stat, _dateKey: dateKey, date: isoDate, userId: currentUser.uid },
+                    { merge: true });
             } catch (e) { console.error(e); showSyncStatus('error'); }
         }
 
@@ -2075,20 +2074,16 @@
                         ]);
                         showSyncStatus('done');
                     }
-                } else {
-                    records = cloudRecords;
-                    bodyStats = cloudStats;
-                    try {
-                        localStorage.setItem('fitTrackRecords', JSON.stringify(records));
-                        localStorage.setItem('fitTrackBodyStats', JSON.stringify(bodyStats));
-                    } catch (e) { }
                 }
+
+                // Single Source of Truth: if cloud empty, arrays stay empty. No fallback.
+                records = cloudRecords;
+                bodyStats = cloudStats;
 
                 updateUI();
             } catch (e) {
-                console.error('Firestore load failed, using localStorage:', e);
+                console.error('Firestore load failed:', e);
                 showSyncStatus('error');
-                updateUI();
             }
         }
 
@@ -2469,6 +2464,11 @@
             const weightVal = parseFloat(document.getElementById('stats-weight').value);
             const fatVal = parseFloat(document.getElementById('stats-fat').value);
 
+            if (!dateVal || !/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+                alert('請選擇正確的日期！');
+                return;
+            }
+
             if (!isNaN(weightVal) || !isNaN(fatVal)) {
                 // Formatting back to localized key "YYYY/MM/DD 星期X" for existing state grouping
                 const [y, m, d] = dateVal.split('-').map(Number);
@@ -2545,21 +2545,9 @@
                 if (!stat) return;
 
                 let dateStr = stat.date;
-                if (!dateStr) {
-                    try {
-                        const parts = dateKey.split(' ')[0].split('/');
-                        if (parts.length >= 3) {
-                            const y = parts[0];
-                            const m = parts[1];
-                            const d = parts[2];
-                            dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-                        } else {
-                            // Backup fallback if we have a completely weird key
-                            dateStr = "1970-01-01";
-                        }
-                    } catch (e) {
-                        dateStr = "1970-01-01";
-                    }
+                // Ultimate filter: If we still don't have a valid YYYY-MM-DD string, KILL IT.
+                if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    return; // Skip this bad legacy data entirely
                 }
 
                 tempData.push({
@@ -2570,9 +2558,18 @@
             });
 
             // Grab any dates from records that aren't in bodyStats
+            // We apply a strict validity check first
             records.forEach(r => {
+                if (!r.timestamp) return;
                 const d = new Date(r.timestamp);
+
+                // If the Date object is invalid (NaN), completely ignore this record
+                if (isNaN(d.getTime())) return;
+
                 const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                // Ultimate filter for record dates
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
 
                 if (!tempData.some(item => item.date === dateStr)) {
                     tempData.push({
@@ -2583,16 +2580,22 @@
                 }
             });
 
+            // Double-check our unified array has no garbage before sorting
+            tempData = tempData.filter(item => item && item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date));
+
             // 2. Stable Date Object Sort (Oldest first)
             tempData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             // Keep only the latest 30 points
             tempData = tempData.slice(-30);
 
-            // 3. Map out formatted labels and dataset arrays
+            // 3. Map out formatted labels strictly from strings (No Date obj parsing meant no 1/1 auto-padding)
             const labels = tempData.map(item => item.date.substring(5).replace('-', '/')); // MM/DD
             const weightData = tempData.map(item => item.weight);
             const fatData = tempData.map(item => item.fat);
+
+            // Safety check
+            console.assert(labels.length === weightData.length && labels.length === fatData.length, '警告：標籤與資料數量不符！');
 
             // 4. Safe destroy
             if (trendChartInstance !== null) {
