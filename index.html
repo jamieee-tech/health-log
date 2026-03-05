@@ -207,8 +207,8 @@
         /* ── Sync-height wrappers: lock both form tops to the same height on desktop ── */
         @media (min-width: 861px) {
             .sync-top-box {
-                min-height: 280px;
-                /* tall enough for diet side: 時段(99) + 純文字(144) + OR(35) = 278px */
+                min-height: 232px;
+                /* tall enough for diet side: 時段(99) + 純文字(98) + OR(35) = 232px */
             }
         }
 
@@ -1620,21 +1620,6 @@
                             <label for="diet-text-name">📝 純文字紀錄 <span style="color:#b0b8c4;font-weight:400;">(外食 /
                                     不估算熱量)</span></label>
                             <input type="text" id="diet-text-name" placeholder="例如：綜合豆花一碗、外食便當…">
-                            <!-- Quick-tag buttons -->
-                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem;">
-                                <button type="button" onclick="logTextOnly('外食便當')"
-                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
-                                    onmouseover="this.style.background='#eff2f5'"
-                                    onmouseout="this.style.background='#f8f9fa'">🍱 外食便當</button>
-                                <button type="button" onclick="logTextOnly('餐廳料理')"
-                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
-                                    onmouseover="this.style.background='#eff2f5'"
-                                    onmouseout="this.style.background='#f8f9fa'">🍽️ 餐廳料理</button>
-                                <button type="button" onclick="logTextOnly('手搖飲')"
-                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
-                                    onmouseover="this.style.background='#eff2f5'"
-                                    onmouseout="this.style.background='#f8f9fa'">🧋 手搖飲</button>
-                            </div>
                         </div>
                         <!-- OR divider -->
                         <div
@@ -1813,7 +1798,7 @@
             from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
         import {
             getFirestore, collection, doc, query, where,
-            getDocs, getDoc, setDoc, deleteDoc
+            getDocs, getDoc, setDoc, addDoc, deleteDoc
         }
             from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
         import {
@@ -1980,8 +1965,27 @@
             if (!currentUser) return;
             showSyncStatus('syncing');
             try {
-                const data = { ...record, userId: currentUser.uid, timestamp: record.timestamp.toISOString() };
-                await setDoc(doc(db, 'records', record.id), data);
+                // Add a simple YYYY-MM-DD date string to make querying bulletproof
+                const d = new Date(record.timestamp);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                const data = {
+                    ...record,
+                    userId: currentUser.uid,
+                    timestamp: d.toISOString(),
+                    date: dateStr
+                };
+
+                // Remove the locally generated ID so Firebase can create a true random Document ID
+                delete data.id;
+
+                // Use addDoc to let Firebase generate a random unique ID
+                const docRef = await addDoc(collection(db, 'records'), data);
+
+                // Update local memory record ID to match Firebase's generated ID
+                // so that the local "Delete" button will point to the correct Document ID.
+                record.id = docRef.id;
+
                 showSyncStatus('done');
             } catch (e) { console.error(e); showSyncStatus('error'); }
         }
@@ -2147,7 +2151,7 @@
             const note = document.getElementById('ex-note').value.trim();
 
             const record = {
-                id: Date.now().toString(),
+                id: crypto.randomUUID(),
                 category: 'exercise',
                 type, time, load,
                 ...(note && { note }),
@@ -2196,7 +2200,7 @@
             const fat = parseFloat(document.getElementById('custom-fat').value);
 
             const newFood = {
-                id: 'f' + Date.now().toString(),
+                id: 'f' + crypto.randomUUID(),
                 name: name,
                 carbs: carbs,
                 protein: protein,
@@ -2349,7 +2353,7 @@
                 const fatCalc = food.fat * mult;
                 const calories = Math.ceil((carbsCalc * 4) + (proteinCalc * 4) + (fatCalc * 9));
                 record = {
-                    id: Date.now().toString(),
+                    id: crypto.randomUUID(),
                     category: 'diet',
                     name: `${food.name} (${weight}g)`,
                     group: food.group,
@@ -2368,7 +2372,7 @@
                     : customName;
                 if (!fallbackName) return; // nothing to save
                 record = {
-                    id: Date.now().toString(),
+                    id: crypto.randomUUID(),
                     category: 'diet',
                     isTextOnly: true,
                     name: fallbackName,
@@ -2393,7 +2397,7 @@
         window.logTextOnly = function (label) {
             const mealPeriod = document.getElementById('diet-meal-period').value || '午餐';
             const record = {
-                id: Date.now().toString(),
+                id: crypto.randomUUID(),
                 category: 'diet',
                 isTextOnly: true,
                 name: label,
@@ -2431,7 +2435,7 @@
         // Water Global Functions
         window.addWater = function (amount) {
             const record = {
-                id: Date.now().toString(),
+                id: crypto.randomUUID(),
                 category: 'water',
                 amount: Math.ceil(amount),
                 timestamp: dateFromSelected()
