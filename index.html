@@ -204,6 +204,14 @@
             animation: fadeInUp 0.8s ease-out 0.4s both;
         }
 
+        /* ── Sync-height wrappers: lock both form tops to the same height on desktop ── */
+        @media (min-width: 861px) {
+            .sync-top-box {
+                min-height: 280px;
+                /* tall enough for diet side: 時段(99) + 純文字(144) + OR(35) = 278px */
+            }
+        }
+
         @media (max-width: 860px) {
             .input-section {
                 flex-direction: column;
@@ -268,12 +276,14 @@
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 24px;
+            /* exact = 1.5rem at 16px root */
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 0.6rem;
+            line-height: 1.25;
+            margin-bottom: 8px;
             color: var(--text-secondary);
             font-size: 0.95rem;
             font-weight: 500;
@@ -283,14 +293,17 @@
         .form-group input,
         .form-group select {
             width: 100%;
+            height: 48px;
+            box-sizing: border-box;
             background: var(--bg-input);
             border: 1px solid #efefef;
             border-radius: 10px;
-            padding: 1rem 1.2rem;
+            padding: 0 16px;
             color: var(--text-main);
-            font-size: 1rem;
+            font-size: 0.95rem;
+            font-family: inherit;
             outline: none;
-            transition: all 0.3s ease;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         .form-group input:focus,
@@ -1530,24 +1543,49 @@
                     運動紀錄
                 </h2>
                 <form id="exercise-form" class="fitness-form">
-                    <div class="form-group">
-                        <label for="ex-type">項 目</label>
-                        <select id="ex-type" required>
-                            <option value="" disabled selected>請選擇運動項目...</option>
-                            <option value="跑步">🏃‍♂️ 跑步</option>
-                            <option value="健身">🏋️‍♂️ 健身</option>
-                            <option value="有氧">🚴‍♂️ 有氧</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="ex-time">時 間 (分鐘)</label>
-                        <input type="number" id="ex-time" min="1" required placeholder="例如: 30">
+                    <div class="sync-top-box">
+                        <div class="form-group">
+                            <label for="ex-type">項 目</label>
+                            <select id="ex-type" required>
+                                <option value="" disabled selected>請選擇運動項目...</option>
+                                <option value="跑步">跑步</option>
+                                <option value="健身">健身</option>
+                                <option value="有氧">有氧</option>
+                                <option value="騎車">騎車</option>
+                                <option value="登山">登山</option>
+                                <option value="健走">健走</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ex-time">時 間 (分鐘)</label>
+                            <input type="number" id="ex-time" min="1" required placeholder="例如: 30">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="ex-load">運 動 負 荷 (Garmin Load)</label>
                         <input type="number" id="ex-load" min="0" required placeholder="例如: 120">
                     </div>
-                    <!-- flex:1 spacer — pushes submit down to match diet button position -->
+                    <div class="form-group">
+                        <label for="ex-note">備 註 <span style="color:#b0b8c4;font-weight:400;">(選填)</span></label>
+                        <input type="text" id="ex-note" placeholder="例如：胸臀腿、六個五分鐘…">
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button type="button"
+                                onclick="const n=document.getElementById('ex-note');n.value='重訓：';n.focus();"
+                                style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                onmouseover="this.style.background='#f0f4ff'"
+                                onmouseout="this.style.background='#f8f9fa'">🏻️ 重訓</button>
+                            <button type="button"
+                                onclick="const n=document.getElementById('ex-note');n.value='跑步：';n.focus();"
+                                style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                onmouseover="this.style.background='#f0f4ff'"
+                                onmouseout="this.style.background='#f8f9fa'">🏃‍♂️ 跑步</button>
+                            <button type="button"
+                                onclick="const n=document.getElementById('ex-note');n.value='有氧：';n.focus();"
+                                style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                onmouseover="this.style.background='#f0f4ff'"
+                                onmouseout="this.style.background='#f8f9fa'">🚴‍♂️ 有氧</button>
+                        </div>
+                    </div>
                     <div class="form-spacer"></div>
                     <button type="submit" class="submit-btn fitness-btn">新增運動紀錄</button>
                 </form>
@@ -1567,24 +1605,55 @@
                     飲食紀錄
                 </h2>
                 <form id="diet-form" class="health-form">
-                    <div class="form-group">
-                        <label for="diet-meal-period">進 食 時 段</label>
-                        <select id="diet-meal-period" class="custom-select" required>
-                            <option value="早餐">🍅 早餐</option>
-                            <option value="午餐">🍛 午餐</option>
-                            <option value="晚餐">🌙 晚餐</option>
-                            <option value="點心/其他">🍪 點心/其他</option>
-                        </select>
+                    <div class="sync-top-box">
+                        <div class="form-group">
+                            <label for="diet-meal-period">進 食 時 段</label>
+                            <select id="diet-meal-period" class="custom-select" required>
+                                <option value="早餐">🍅 早餐</option>
+                                <option value="午餐">🍛 午餐</option>
+                                <option value="晚餐">🌙 晚餐</option>
+                                <option value="點心/其他">🍪 點心/其他</option>
+                            </select>
+                        </div>
+                        <!-- ── Text-only entry ── -->
+                        <div class="form-group">
+                            <label for="diet-text-name">📝 純文字紀錄 <span style="color:#b0b8c4;font-weight:400;">(外食 /
+                                    不估算熱量)</span></label>
+                            <input type="text" id="diet-text-name" placeholder="例如：綜合豆花一碗、外食便當…">
+                            <!-- Quick-tag buttons -->
+                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem;">
+                                <button type="button" onclick="logTextOnly('外食便當')"
+                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                    onmouseover="this.style.background='#eff2f5'"
+                                    onmouseout="this.style.background='#f8f9fa'">🍱 外食便當</button>
+                                <button type="button" onclick="logTextOnly('餐廳料理')"
+                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                    onmouseover="this.style.background='#eff2f5'"
+                                    onmouseout="this.style.background='#f8f9fa'">🍽️ 餐廳料理</button>
+                                <button type="button" onclick="logTextOnly('手搖飲')"
+                                    style="padding:0.35rem 0.75rem;border:1px solid #efefef;border-radius:20px;background:#f8f9fa;font-size:0.8rem;cursor:pointer;color:var(--text-secondary);transition:background 0.15s;"
+                                    onmouseover="this.style.background='#eff2f5'"
+                                    onmouseout="this.style.background='#f8f9fa'">🧋 手搖飲</button>
+                            </div>
+                        </div>
+                        <!-- OR divider -->
+                        <div
+                            style="display:flex;align-items:center;gap:0.7rem;margin:0.5rem 0;color:#c8cdd6;font-size:0.78rem;font-weight:600;">
+                            <div style="flex:1;height:1px;background:#efefef;"></div>
+                            或從食物資料庫計算
+                            <div style="flex:1;height:1px;background:#efefef;"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="diet-food-select">選 擇 食 物</label>
-                        <select id="diet-food-select" class="custom-select" required>
+                        <select id="diet-food-select" class="custom-select">
                             <option value="" disabled selected>請選擇食物...</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="diet-weight">重 量 (克)</label>
-                        <input type="number" id="diet-weight" min="1" step="1" required placeholder="例如: 200">
+                        <label for="diet-weight">重 量 (克) <span
+                                style="color:#b0b8c4;font-weight:400;">(選填)</span></label>
+                        <input type="number" id="diet-weight" min="1" step="1" placeholder="例如: 200">
                     </div>
                     <div class="form-group" style="margin-top: 1rem; margin-bottom: 1.5rem;">
                         <label for="diet-photo"
@@ -2070,21 +2139,22 @@
         exerciseForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const typeSelect = document.getElementById('ex-type');
-            const type = typeSelect.options[typeSelect.selectedIndex].text.replace(/^[^\s]+\s/, ''); // Remove emoji
+            if (!typeSelect.value) return;
 
-            const time = parseInt(document.getElementById('ex-time').value, 10);
-            const load = parseInt(document.getElementById('ex-load').value, 10);
+            const type = typeSelect.options[typeSelect.selectedIndex].text.replace(/^[^\s]+\s/, '');
+            const time = parseInt(document.getElementById('ex-time').value, 10) || 0;
+            const load = parseInt(document.getElementById('ex-load').value, 10) || 0;
+            const note = document.getElementById('ex-note').value.trim();
 
             const record = {
                 id: Date.now().toString(),
                 category: 'exercise',
-                type: type,
-                time: time,
-                load: load,
+                type, time, load,
+                ...(note && { note }),
                 timestamp: dateFromSelected()
             };
 
-            records.unshift(record); // Add to beginning
+            records.unshift(record);
             firestoreSaveRecord(record);
             exerciseForm.reset();
             updateUI();
@@ -2263,43 +2333,79 @@
         dietForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const foodId = foodSelect.value;
-            const weight = parseFloat(document.getElementById('diet-weight').value);
+            const weightRaw = document.getElementById('diet-weight').value;
+            const weight = parseFloat(weightRaw);
+            const mealPeriod = document.getElementById('diet-meal-period').value || '午餐';
 
-            if (!foodId) return;
+            let record;
 
-            const food = foodDatabase.find(f => f.id === foodId);
-            if (!food) return;
-
-            const multiplier = weight / 100;
-            const carbsCalc = food.carbs * multiplier;
-            const proteinCalc = food.protein * multiplier;
-            const fatCalc = food.fat * multiplier;
-
-            // Formula calculation requested by user
-            const calories = Math.ceil((carbsCalc * 4) + (proteinCalc * 4) + (fatCalc * 9));
-
-            const record = {
-                id: Date.now().toString(),
-                category: 'diet',
-                name: `${food.name} (${weight}g)`,
-                group: food.group,
-                mealPeriod: document.getElementById('diet-meal-period').value || '午餐',
-                carbs: parseFloat(carbsCalc.toFixed(1)),
-                protein: parseFloat(proteinCalc.toFixed(1)),
-                fat: parseFloat(fatCalc.toFixed(1)),
-                calories: calories,
-                timestamp: dateFromSelected()
-                // photo intentionally omitted — local preview only, never stored
-            };
+            if (foodId && !isNaN(weight) && weight > 0) {
+                // ── Numeric path: full nutrition calculation ──
+                const food = foodDatabase.find(f => f.id === foodId);
+                if (!food) return;
+                const mult = weight / 100;
+                const carbsCalc = food.carbs * mult;
+                const proteinCalc = food.protein * mult;
+                const fatCalc = food.fat * mult;
+                const calories = Math.ceil((carbsCalc * 4) + (proteinCalc * 4) + (fatCalc * 9));
+                record = {
+                    id: Date.now().toString(),
+                    category: 'diet',
+                    name: `${food.name} (${weight}g)`,
+                    group: food.group,
+                    mealPeriod,
+                    carbs: parseFloat(carbsCalc.toFixed(1)),
+                    protein: parseFloat(proteinCalc.toFixed(1)),
+                    fat: parseFloat(fatCalc.toFixed(1)),
+                    calories,
+                    timestamp: dateFromSelected()
+                };
+            } else {
+                // ── Text-only path: free description, no nutritional data ──
+                const customName = document.getElementById('diet-text-name').value.trim();
+                const fallbackName = foodId
+                    ? (foodDatabase.find(f => f.id === foodId)?.name || '外食')
+                    : customName;
+                if (!fallbackName) return; // nothing to save
+                record = {
+                    id: Date.now().toString(),
+                    category: 'diet',
+                    isTextOnly: true,
+                    name: fallbackName,
+                    group: '外食/其他',
+                    mealPeriod,
+                    carbs: 0, protein: 0, fat: 0, calories: 0,
+                    timestamp: dateFromSelected()
+                };
+            }
 
             records.unshift(record);
             firestoreSaveRecord(record);
             dietForm.reset();
+            document.getElementById('diet-text-name').value = '';
             currentPhotoBase64 = null;
             photoPreviewContainer.style.display = 'none';
             photoPreview.src = '';
             updateUI();
         });
+
+        /** Quick-tag: save a text-only record instantly */
+        window.logTextOnly = function (label) {
+            const mealPeriod = document.getElementById('diet-meal-period').value || '午餐';
+            const record = {
+                id: Date.now().toString(),
+                category: 'diet',
+                isTextOnly: true,
+                name: label,
+                group: '外食/其他',
+                mealPeriod,
+                carbs: 0, protein: 0, fat: 0, calories: 0,
+                timestamp: dateFromSelected()
+            };
+            records.unshift(record);
+            firestoreSaveRecord(record);
+            updateUI();
+        };
 
         // Photo Modal Global Functions
         window.openPhotoModal = function (src) {
@@ -2667,9 +2773,12 @@
                 function buildExerciseDiv(record) {
                     const d = document.createElement('div');
                     d.className = 'record-item exercise';
+                    const noteBadge = record.note
+                        ? `<span style="display:inline-block;margin-left:0.4rem;padding:0.15rem 0.55rem;background:#f0f2f5;border-radius:20px;font-size:0.72rem;color:#7f8c99;font-weight:500;vertical-align:middle;">${record.note}</span>`
+                        : '';
                     d.innerHTML = `
                         <div class="ri-header">
-                            <span class="ri-name">🏃‍♂️ ${record.type}</span>
+                            <span class="ri-name">🏃‍♂️ ${record.type}${noteBadge}</span>
                             <span class="ri-value">${record.load} Load</span>
                             <span class="ri-toggle">❯</span>
                         </div>
@@ -2678,6 +2787,7 @@
                                 <div class="ri-detail-row">
                                     <span class="ri-chip">⏱ <strong>${record.time}</strong> 分鐘</span>
                                     <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                    ${record.note ? `<span class="ri-chip">📝 ${record.note}</span>` : ''}
                                 </div>
                                 <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
                             </div>
@@ -2686,29 +2796,46 @@
                 }
 
                 function buildDietDiv(record) {
+                    const isTextOnly = !!record.isTextOnly;
                     const isVeggie = record.group === '蔬菜類';
                     const d = document.createElement('div');
-                    d.className = `record-item diet${isVeggie ? ' vegetable' : ''}`;
-                    // Extract weight from name string like "雞腿排(去皮) (180g)"
-                    const weightMatch = record.name.match(/(\d+(?:\.\d+)?)g\)$/);
-                    const weightStr = weightMatch ? weightMatch[1] + 'g' : '';
-                    d.innerHTML = `
-                        <div class="ri-header">
-                            <span class="ri-name">🥗 ${record.name}</span>
-                            <span class="ri-value">${Math.ceil(record.calories)} kcal</span>
-                            <span class="ri-toggle">❯</span>
-                        </div>
-                        <div class="ri-body">
-                            <div class="ri-body-inner">
-                                <div class="ri-detail-row">
-                                    <span class="ri-chip">🍖 <strong>${record.protein}g</strong> 蛋白</span>
-                                    <span class="ri-chip">🍞 ${record.carbs}g 碳水</span>
-                                    <span class="ri-chip">🧈 ${record.fat}g 脂肪</span>
-                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
-                                </div>
-                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                    d.className = `record-item diet${isVeggie ? ' vegetable' : ''}${isTextOnly ? ' text-only' : ''}`;
+
+                    if (isTextOnly) {
+                        // Minimal display: name + time + delete only
+                        d.innerHTML = `
+                            <div class="ri-header">
+                                <span class="ri-name">📝 ${record.name}</span>
+                                <span class="ri-toggle">❯</span>
                             </div>
-                        </div>`;
+                            <div class="ri-body">
+                                <div class="ri-body-inner">
+                                    <div class="ri-detail-row">
+                                        <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                        <span class="ri-chip" style="color:#b0b8c4;">外食 / 未估算</span>
+                                    </div>
+                                    <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                                </div>
+                            </div>`;
+                    } else {
+                        d.innerHTML = `
+                            <div class="ri-header">
+                                <span class="ri-name">🥗 ${record.name}</span>
+                                <span class="ri-value">${Math.ceil(record.calories)} kcal</span>
+                                <span class="ri-toggle">❯</span>
+                            </div>
+                            <div class="ri-body">
+                                <div class="ri-body-inner">
+                                    <div class="ri-detail-row">
+                                        <span class="ri-chip">🍖 <strong>${record.protein}g</strong> 蛋白</span>
+                                        <span class="ri-chip">🍞 ${record.carbs}g 碳水</span>
+                                        <span class="ri-chip">🧈 ${record.fat}g 脂肪</span>
+                                        <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
+                                    </div>
+                                    <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
+                                </div>
+                            </div>`;
+                    }
                     return makeAccordion(d);
                 }
 
