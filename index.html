@@ -2546,8 +2546,20 @@
 
                 let dateStr = stat.date;
                 if (!dateStr) {
-                    const [y, m, d] = dateKey.split(' ')[0].split('/');
-                    dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    try {
+                        const parts = dateKey.split(' ')[0].split('/');
+                        if (parts.length >= 3) {
+                            const y = parts[0];
+                            const m = parts[1];
+                            const d = parts[2];
+                            dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                        } else {
+                            // Backup fallback if we have a completely weird key
+                            dateStr = "1970-01-01";
+                        }
+                    } catch (e) {
+                        dateStr = "1970-01-01";
+                    }
                 }
 
                 tempData.push({
@@ -3168,7 +3180,10 @@
             const today = new Date();
             const y = today.getFullYear();
             const m = String(today.getMonth() + 1).padStart(2, '0');
-            document.getElementById('export-month').value = `${y} -${m}`;
+            const moInput = document.getElementById('export-month');
+            if (moInput) {
+                moInput.value = `${y}-${m}`;
+            }
         }
 
         // Auto-select meal period based on current hour
