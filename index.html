@@ -2536,56 +2536,56 @@
         function renderTrendChart() {
             const ctx = document.getElementById('trendChart').getContext('2d');
 
-            // 1. Gather all dates into a unified array of objects
-            const dataArray = [];
+            // 1. Safe Array built directly from local objects (which reflect Firestore)
+            let tempData = [];
 
-            // Add all body stats dates
+            // Grab all distinct dates from bodyStats
             Object.keys(bodyStats).forEach(dateKey => {
                 const stat = bodyStats[dateKey];
                 if (!stat) return;
 
-                // Fallback for legacy data without strict "date" property
-                let dStr = stat.date;
-                if (!dStr) {
+                let dateStr = stat.date;
+                if (!dateStr) {
                     const [y, m, d] = dateKey.split(' ')[0].split('/');
-                    dStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                    dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
                 }
 
-                dataArray.push({
-                    dateString: dStr,
-                    label: `${dStr.substring(5).replace('-', '/')}`, // MM/DD
+                tempData.push({
+                    date: dateStr,
                     weight: stat.weight || null,
                     fat: stat.fat || null
                 });
             });
 
-            // Add all record dates (so days we worked out but didn't weigh in still show up on timeline)
+            // Grab any dates from records that aren't in bodyStats
             records.forEach(r => {
                 const d = new Date(r.timestamp);
-                const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-                // Only push if we don't already have this date in dataArray
-                if (!dataArray.some(item => item.dateString === dStr)) {
-                    dataArray.push({
-                        dateString: dStr,
-                        label: `${dStr.substring(5).replace('-', '/')}`,
+                if (!tempData.some(item => item.date === dateStr)) {
+                    tempData.push({
+                        date: dateStr,
                         weight: null,
                         fat: null
                     });
                 }
             });
 
-            // 2. Strict Object Array Sort (Chronological: Oldest to Newest)
-            dataArray.sort((a, b) => a.dateString.localeCompare(b.dateString));
+            // 2. Stable Date Object Sort (Oldest first)
+            tempData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            // 3. Map after sort for Chart.js
-            const chartData = dataArray.slice(-30);
-            const labels = chartData.map(d => d.label);
-            const weightData = chartData.map(d => d.weight);
-            const fatData = chartData.map(d => d.fat);
+            // Keep only the latest 30 points
+            tempData = tempData.slice(-30);
 
-            if (trendChartInstance) {
+            // 3. Map out formatted labels and dataset arrays
+            const labels = tempData.map(item => item.date.substring(5).replace('-', '/')); // MM/DD
+            const weightData = tempData.map(item => item.weight);
+            const fatData = tempData.map(item => item.fat);
+
+            // 4. Safe destroy
+            if (trendChartInstance !== null) {
                 trendChartInstance.destroy();
+                trendChartInstance = null;
             }
 
             Chart.defaults.color = '#7f8c8d';
