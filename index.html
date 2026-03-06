@@ -1499,6 +1499,22 @@
                 gap: 15px;
             }
         }
+
+        #exportDataBtn {
+            background-color: transparent;
+            border: 1px solid #e4e8ee;
+            color: #bdc3c7;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #exportDataBtn:hover {
+            color: #7f8c8d;
+            border-color: #d0d3d4;
+        }
     </style>
 </head>
 
@@ -1837,9 +1853,13 @@
         <!-- Body Stats & Trend Chart – Bottom Section -->
         <section class="body-trend-section"
             style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.07);">
-            <h2
-                style="font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem; background: linear-gradient(90deg,#f39c12,#e74c3c); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-                📊 長期健康趨勢</h2>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2
+                    style="font-size: 1.6rem; font-weight: 800; margin: 0; background: linear-gradient(90deg,#f39c12,#e74c3c); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    📊 長期健康趨勢</h2>
+                <button id="exportDataBtn" onclick="exportToCSV()">匯出健康月報 (CSV)</button>
+            </div>
 
             <!-- Input area -->
             <div class="weight-input-section"
@@ -2766,6 +2786,9 @@
             // Double-check our unified array has no garbage before sorting
             tempData = tempData.filter(item => item && item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date));
 
+            // Expose the valid array for the CSV export feature
+            window.currentChartData = tempData;
+
             // Run Cycle Analysis Algorithm
             analyzeCycle(tempData);
 
@@ -2903,6 +2926,74 @@
                 }
             });
         }
+
+        // CSV Export Feature
+        window.exportToCSV = function () {
+            const dataArray = window.currentChartData || [];
+            if (dataArray.length === 0) {
+                alert("目前沒有可匯出的數據");
+                return;
+            }
+
+            // Find all period start dates for calculating historical cycle gaps
+            const periodDates = dataArray.filter(item => item.isPeriod).map(item => new Date(item.date));
+            periodDates.sort((a, b) => a - b); // Oldest first
+
+            let csvContent = "\uFEFF";
+            csvContent += "Date,Weight,Fat,Is Period,Health Insight\n";
+
+            dataArray.forEach(item => {
+                const itemDate = new Date(item.date);
+
+                // Find the most recent period date BEFORE or ON this row's date
+                let lastPeriodDate = null;
+                for (let i = periodDates.length - 1; i >= 0; i--) {
+                    if (periodDates[i] <= itemDate) {
+                        lastPeriodDate = periodDates[i];
+                        break;
+                    }
+                }
+
+                let insight = "無足夠週期資料";
+
+                if (lastPeriodDate) {
+                    const diffTime = Math.abs(itemDate - lastPeriodDate);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    const dayInCycle = (diffDays % 28) + 1;
+
+                    if (dayInCycle >= 22 && dayInCycle <= 28) {
+                        insight = `黃體期 (第${dayInCycle}天)：易水腫，體重波動屬正常`;
+                    } else if (dayInCycle >= 1 && dayInCycle <= 5) {
+                        insight = `月經期 (第${dayInCycle}天)：身體易疲倦`;
+                    } else {
+                        insight = `濾泡期 (第${dayInCycle}天)：黃金代謝期，測量最準確`;
+                    }
+                }
+
+                const row = [
+                    item.date,
+                    item.weight || "",
+                    item.fat || "",
+                    item.isPeriod ? "是" : "-",
+                    insight
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            const d = new Date();
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+            link.setAttribute("href", url);
+            link.setAttribute("download", `My_Health_Report_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
 
         function renderHistory() {
             // Remove all existing date cards
