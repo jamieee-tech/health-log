@@ -11,6 +11,16 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;800&display=swap"
         rel="stylesheet">
+    <script>
+        // GLOBAL ERROR CAPTURE FOR SILENT FAILURES
+        window.onerror = function (msg, url, line, col, error) {
+            alert("JS 嚴重錯誤 (請截圖給工程師):\n" + msg + "\n行數: " + line);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function (event) {
+            alert("非同步網路錯誤:\n" + (event.reason ? event.reason.message || event.reason : '未知錯誤'));
+        });
+    </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
@@ -1119,6 +1129,13 @@
             gap: 0.3rem;
         }
 
+        .ri-delete {
+            cursor: pointer !important;
+            position: relative !important;
+            z-index: 100 !important;
+            pointer-events: auto !important;
+        }
+
         .btn-sm-delete:hover {
             background: var(--danger);
             color: white;
@@ -1554,8 +1571,6 @@
             </div>
         </div>
     </div>
-    <!-- ─────────────────────────────────────────────────────────── -->
-
     <div class="container">
         <header>
             <div style="flex:1;">
@@ -1614,6 +1629,9 @@
                         <span class="m-label">脂肪(g)</span>
                     </span>
                 </div>
+
+
+
                 <!-- Protein Goal Input -->
                 <div
                     style="margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--panel-border); display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
@@ -1828,13 +1846,39 @@
                 style="font-size: 1.3rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--accent-diet);">
                 💧 紀錄飲水</h2>
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                <button class="water-btn" type="button" onclick="addWater(450)">+ 450 cc</button>
-                <button class="water-btn" type="button" onclick="addWater(600)">+ 600 cc</button>
+                <button class="water-btn" type="button" onclick="addWater(400)">+ 400 cc</button>
+                <button class="water-btn" type="button" onclick="addWater(500)">+ 500 cc</button>
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
                     <input type="number" id="manual-water" placeholder="手動輸入 cc"
                         style="width: 130px; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid #efefef; background: var(--bg-input); color: var(--text-main); font-size: 0.95rem; outline: none;"
                         min="1">
                     <button class="water-btn" type="button" onclick="addManualWater()">新增</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Goal Progress Bars ── -->
+        <section class="history-section" style="padding: 1.2rem 2rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <!-- Protein Progress -->
+                <div>
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--accent-protein); margin-bottom: 0.3rem;">
+                        <span id="protein-status-text">蛋白: 0 / 120 g</span>
+                    </div>
+                    <div class="protein-progress-bg">
+                        <div class="protein-progress-fill" id="protein-progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <!-- Water Progress -->
+                <div>
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; color: var(--accent-diet); margin-bottom: 0.3rem;">
+                        <span id="water-status-text">飲水: 0 / 2000 cc</span>
+                    </div>
+                    <div class="water-progress-bg">
+                        <div class="water-progress-fill" id="water-progress-fill" style="width: 0%;"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1954,19 +1998,14 @@
 
     <script type="module">
         // ─── Firebase SDK ────────────────────────────────────────────────────
-        import { initializeApp }
-            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
         import {
-            getFirestore, collection, doc, query, where,
-            getDocs, getDoc, setDoc, addDoc, deleteDoc
-        }
-            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
-        import {
-            getAuth, GoogleAuthProvider,
-            signInWithPopup, onAuthStateChanged, signOut
-        }
-            from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+            getFirestore, collection, addDoc, getDocs,
+            query, where, deleteDoc, doc, setDoc, orderBy
+        } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
+        // 這裡使用你提供的 Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCTLBIVjxu2-HQ0dvCGiGjt3tvLNkmK57o",
             authDomain: "myhealthlog-23caa.firebaseapp.com",
@@ -1976,79 +2015,198 @@
             appId: "1:1023293122394:web:32978ed10976d70e867563",
             measurementId: "G-NR8NP8JE5L"
         };
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        // 將核心變數掛載到 window 確保全域一致性
+        window.currentUser = null;
+        window.records = [];
+        window.bodyStats = {};
 
-        // ─── Sync Status UI ──────────────────────────────────────────────────
-        const syncEl = document.getElementById('sync-status');
-        let syncTimer = null;
-        function showSyncStatus(state) {
-            syncEl.className = state;
-            syncEl.textContent = state === 'syncing' ? '☁️ 雲端同步中...'
-                : state === 'done' ? '✅ 已同步'
-                    : '⚠️ 同步失敗';
-            clearTimeout(syncTimer);
-            if (state !== 'syncing') {
-                syncTimer = setTimeout(() => {
-                    syncEl.style.opacity = '0';
-                    setTimeout(() => { syncEl.className = ''; syncEl.style.opacity = '1'; }, 400);
-                }, 2500);
+
+        // ─── 核心全域函數 Hoisting 確保不會有 undefined 錯誤 ───
+        window.updateUI = function () {
+            const dateInput = document.getElementById('record-date-input');
+            const selectedDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+
+            const todaysRecords = (window.records || []).filter(r => {
+                const d = new Date(r.timestamp);
+                if (isNaN(d.getTime())) return false;
+                // 確保 timestamp 轉換為 YYYY-MM-DD 格式進行比對
+                const rISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                return rISO === selectedDate;
+            });
+
+            let cals = 0, carbs = 0, prot = 0, fat = 0, water = 0, load = 0;
+
+            todaysRecords.forEach(r => {
+                if (r.category === 'diet') {
+                    cals += (r.calories || 0);
+                    carbs += (r.carbs || 0);
+                    prot += (r.protein || 0);
+                    fat += (r.fat || 0);
+                } else if (r.category === 'water' || (r.amount && !r.calories)) {
+                    // 關鍵修正：確保能抓到 amount 欄位，並轉為數字
+                    water += Number(r.amount || 0);
+                } else if (r.category === 'exercise') {
+                    load += (r.load || 0);
+                }
+            });
+
+            // 1. 更新上方總覽數值
+            document.getElementById('total-calories').innerText = Math.ceil(cals);
+            document.getElementById('total-carbs').innerText = Math.ceil(carbs);
+            document.getElementById('total-protein').innerText = Math.ceil(prot);
+            document.getElementById('total-fat').innerText = Math.ceil(fat);
+
+            const loadEl = document.getElementById('total-load');
+            if (loadEl) loadEl.innerText = Math.ceil(load);
+
+            // 【新增/修正】更新飲水狀態文字（解決重新整理歸零的問題）
+            const waterText = document.getElementById('water-status-text');
+            if (waterText) {
+                waterText.innerText = `飲水: ${Math.ceil(water)} / 2000 cc`;
+            }
+
+            // 2. 更新進度條 UI
+            if (typeof updateProgressUI === 'function') {
+                updateProgressUI(prot, water);
+            }
+
+            // 3. 渲染明細
+            window.renderHistory(todaysRecords.filter(r => r.category !== 'water'));
+        };
+
+        function updateProgressUI(totalProtein, totalWater) {
+            const proteinGoal = parseInt(document.getElementById('protein-goal-input')?.value) || 120;
+            const waterGoal = 2000;
+
+            // 蛋白質進度條
+            const pBar = document.getElementById('protein-progress-fill');
+            if (pBar) {
+                const pPercent = Math.min((totalProtein / proteinGoal) * 100, 100);
+                pBar.style.width = pPercent + '%';
+                const pText = document.getElementById('protein-status-text');
+                if (pText) pText.innerText = `蛋白: ${Math.ceil(totalProtein)} / ${proteinGoal} g`;
+            }
+
+            // 飲水進度條
+            const wBar = document.getElementById('water-progress-fill');
+            if (wBar) {
+                const wPercent = Math.min((totalWater / waterGoal) * 100, 100);
+                wBar.style.width = wPercent + '%';
+                const wText = document.getElementById('water-status-text');
+                if (wText) wText.innerText = `飲水: ${Math.ceil(totalWater)} / ${waterGoal} cc`;
             }
         }
 
-        // ─── Firebase Auth ────────────────────────────────────────────────
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-        let currentUser = null;
+        window.renderHistory = function (filteredRecords) {
+            const container = document.getElementById('history-container');
+            if (!container) return;
 
-        /** Show main app, load user data */
-        function onSignedIn(user) {
-            currentUser = user;
-            document.getElementById('auth-overlay').classList.add('hidden');
-            setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 380);
-            // User badge
-            const badge = document.getElementById('user-badge');
-            const avatar = document.getElementById('user-avatar');
-            const name = document.getElementById('user-name');
-            badge.style.display = 'flex';
-            if (user.photoURL) avatar.src = user.photoURL; else avatar.style.display = 'none';
-            name.textContent = user.displayName || user.email;
-            // Load this user's data from Firestore
-            loadFromFirestore();
+            // Fallback: 如果沒有傳入，自己算並過濾水
+            if (!filteredRecords) {
+                const dateInput = document.getElementById('record-date-input');
+                const selectedDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+                filteredRecords = (window.records || []).filter(r => {
+                    const d = new Date(r.timestamp);
+                    if (isNaN(d.getTime())) return false;
+                    const rISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    return rISO === selectedDate && r.category !== 'water';
+                });
+            }
+
+            if (filteredRecords.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p style="color:#999">今日尚無飲食或運動紀錄</p></div>';
+                return;
+            }
+
+            container.innerHTML = filteredRecords.map(r => {
+                const nutritionHtml = r.category === 'diet' ? `
+                    <div class="ri-detail-row" style="margin-top: 5px; display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span class="ri-chip">🥩 <strong>${Math.ceil(r.protein || 0)}g</strong> 蛋白</span>
+                        <span class="ri-chip">🍞 <strong>${Math.ceil(r.carbs || 0)}g</strong> 碳水</span>
+                        <span class="ri-chip">🧈 <strong>${Math.ceil(r.fat || 0)}g</strong> 脂肪</span>
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="record-item ${r.category}">
+                        <div class="ri-header">
+                            <span class="ri-name"><strong>${r.mealPeriod || ''}</strong> ${r.category === 'diet' ? '🍴' : '💪'} ${r.name}</span>
+                            <span class="ri-value">${r.category === 'diet' ? Math.ceil(r.calories || 0) + ' kcal' : (r.load || 0) + ' Load'}</span>
+                            <button class="ri-delete" onclick="window.deleteRecord('${r.id}')">刪除</button>
+                        </div>
+                        ${nutritionHtml}
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.firestoreSaveRecord = async function (record) {
+            if (!window.currentUser) return;
+            try {
+                if (typeof showSyncStatus === 'function') showSyncStatus('syncing');
+                const docRef = await addDoc(collection(db, "records"), {
+                    ...record,
+                    userId: window.currentUser.uid,
+                    createdAt: new Date().toISOString()
+                });
+
+                // 強制同步本地陣列，確保畫面即時顯示
+                const savedRecord = { id: docRef.id, ...record };
+                if (!window.records) window.records = [];
+                window.records.unshift(savedRecord);
+
+                if (typeof window.updateUI === 'function') window.updateUI(); // 立即觸發儀表板與明細更新
+                if (typeof showSyncStatus === 'function') showSyncStatus('done');
+            } catch (e) {
+                console.error("儲存失敗 (請檢查 Firebase Rules):", e);
+                alert("⚠️ Firebase 阻擋了您的儲存請求！可能是資料庫權限沒有開放寫入。\n詳細錯誤: " + e.message);
+                if (typeof showSyncStatus === 'function') showSyncStatus('error');
+            }
+        };
+
+        // 輔助函數：顯示同步狀態
+        function showSyncStatus(state) {
+            const syncEl = document.getElementById('sync-status');
+            if (!syncEl) return;
+            syncEl.style.display = 'block';
+            syncEl.className = state;
+            syncEl.textContent = state === 'syncing' ? '☁️ 同步中...' : state === 'done' ? '✅ 已同步' : '⚠️ 錯誤';
+            if (state !== 'syncing') setTimeout(() => syncEl.style.display = 'none', 2000);
         }
 
-        /** Show login screen, clear state */
-        function onSignedOut() {
-            currentUser = null;
-            records = []; bodyStats = {};
-            document.getElementById('user-badge').style.display = 'none';
-            const overlay = document.getElementById('auth-overlay');
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.remove('hidden'), 10);
-            updateUI();
-        }
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                window.currentUser = user;
+                const overlay = document.getElementById('auth-overlay');
+                if (overlay) overlay.style.display = 'none';
+                const badge = document.getElementById('user-badge');
+                if (badge) badge.style.display = 'flex';
+                const avatar = document.getElementById('user-avatar');
+                if (user.photoURL && avatar) avatar.src = user.photoURL;
+                const name = document.getElementById('user-name');
+                if (name) name.textContent = user.displayName || user.email;
 
-        onAuthStateChanged(auth, user => user ? onSignedIn(user) : onSignedOut());
-
-        document.getElementById('google-signin-btn').addEventListener('click', () =>
-            signInWithPopup(auth, provider).catch(err => console.error('Sign-in error:', err))
-        );
-        document.getElementById('signout-btn').addEventListener('click', () =>
-            signOut(auth)
-        );
-        // ─── Data State ───────────────────────────────────────────────────
-        let records = [];
-        let bodyStats = {};
-
-        // Fast sync-to-memory from localStorage (immediate render on cold start)
-        // ─── Date Picker Helpers ───────────────────────────────────────────
-
+                if (typeof setDefaultDate === 'function') setDefaultDate();
+                loadFromFirestore();
+            } else {
+                window.currentUser = null;
+                window.records = [];
+                const overlay = document.getElementById('auth-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                const badge = document.getElementById('user-badge');
+                if (badge) badge.style.display = 'none';
+            }
+        });
         /** Returns today's date as YYYY-MM-DD (local time). */
         function todayISO() {
             const n = new Date();
             return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
         }
-
         /**
          * Build a Date using the picker's date + current wall-clock time,
          * so within-day ordering stays correct when backdating records.
@@ -2125,122 +2283,57 @@
         /** Sanitise a zh-TW date key so it can be a Firestore doc ID (no slashes). */
         function fKey(dateKey) { return dateKey.replace(/\//g, '-').replace(/\s+/g, '_'); }
 
-        async function firestoreSaveRecord(record) {
-            if (!currentUser) return;
-            showSyncStatus('syncing');
+
+
+
+
+        window.deleteRecord = async function (id) {
+            if (!id || id === 'undefined') return;
+            if (!confirm('確定要刪除這筆紀錄嗎？')) return;
             try {
-                // Add a simple YYYY-MM-DD date string to make querying bulletproof
-                const d = new Date(record.timestamp);
-                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                showSyncStatus('syncing');
+                // 關鍵：從外部重新抓取 Firebase 組件，確保牆外也跑得動
+                const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js");
 
-                const data = {
-                    ...record,
-                    userId: currentUser.uid,
-                    timestamp: d.toISOString(),
-                    date: dateStr
-                };
-
-                // Remove the locally generated ID so Firebase can create a true random Document ID
-                delete data.id;
-
-                // Use addDoc to let Firebase generate a random unique ID
-                const docRef = await addDoc(collection(db, 'records'), data);
-
-                // Update local memory record ID to match Firebase's generated ID
-                // so that the local "Delete" button will point to the correct Document ID.
-                record.id = docRef.id;
-
-                showSyncStatus('done');
-            } catch (e) { console.error(e); showSyncStatus('error'); }
-        }
-
-        async function firestoreDeleteRecord(id) {
-            showSyncStatus('syncing');
-            try {
                 await deleteDoc(doc(db, 'records', id));
+                window.records = window.records.filter(r => r.id !== id);
+                updateUI();
                 showSyncStatus('done');
-            } catch (e) { console.error(e); showSyncStatus('error'); }
-        }
+            } catch (e) {
+                console.error("刪除失敗:", e);
+                showSyncStatus('error');
+            }
+        };
 
-        async function firestoreSaveBodyStat(isoDate, dateKey, stat) {
-            if (!currentUser) return;
-            try {
-                // Ensure same day maps to exactly one document using userId_YYYY-MM-DD
-                const docId = currentUser.uid + '_' + isoDate;
-                await setDoc(doc(db, 'bodyStats', docId),
-                    { ...stat, _dateKey: dateKey, date: isoDate, userId: currentUser.uid },
-                    { merge: true });
-            } catch (e) { console.error(e); showSyncStatus('error'); }
-        }
-
-        async function firestoreSaveSetting(key, value) {
-            if (!currentUser) return;
-            try {
-                // Per-user setting doc ID: uid_key
-                const docId = currentUser.uid + '_' + key;
-                await setDoc(doc(db, 'settings', docId), { userId: currentUser.uid, [key]: value });
-            } catch (e) { console.error(e); }
-        }
-
-        /**
-         * Load all data from Firestore, overriding local cache.
-         * Falls back gracefully to localStorage if Firestore is unreachable.
-         */
+        // ─── 修正 2：Firebase 載入並強制更新 ───
         async function loadFromFirestore() {
-            if (!currentUser) return;
-            showSyncStatus('syncing');
+            if (!window.currentUser) return;
             try {
-                const uid = currentUser.uid;
-                // Query only THIS user's records
-                const recQuery = query(collection(db, 'records'), where('userId', '==', uid));
-                const bsQuery = query(collection(db, 'bodyStats'), where('userId', '==', uid));
-                const settDoc = doc(db, 'settings', uid + '_proteinGoal');
+                showSyncStatus('syncing');
+                const q = query(collection(db, "records"), where("userId", "==", window.currentUser.uid), orderBy("timestamp", "desc"));
+                const querySnapshot = await getDocs(q);
 
-                const [recSnap, bsSnap, settSnap] = await Promise.all([
-                    getDocs(recQuery), getDocs(bsQuery), getDoc(settDoc)
-                ]);
-
-                // Records
-                const cloudRecords = recSnap.docs.map(d => ({
-                    ...d.data(), timestamp: new Date(d.data().timestamp)
-                }));
-                cloudRecords.sort((a, b) => b.timestamp - a.timestamp);
-
-                // Body stats
-                const cloudStats = {};
-                bsSnap.docs.forEach(d => {
-                    const data = d.data();
-                    const key = data._dateKey || d.id.replace(/-/g, '/').replace(/_/g, ' ');
-                    cloudStats[key] = { weight: data.weight, fat: data.fat, date: data.date, isPeriod: data.isPeriod };
+                window.records = [];
+                querySnapshot.forEach((doc) => {
+                    window.records.push({ id: doc.id, ...doc.data() });
                 });
 
-                // Per-user protein goal
-                if (settSnap.exists()) {
-                    const goal = settSnap.data().proteinGoal;
-                    if (goal) document.getElementById('protein-goal-input').value = goal;
-                }
+                // 載入體脂數據
+                const qStats = query(collection(db, "bodyStats"), where("userId", "==", window.currentUser.uid));
+                const statsSnap = await getDocs(qStats);
+                window.bodyStats = {};
+                statsSnap.forEach(doc => {
+                    const data = doc.data();
+                    window.bodyStats[data._dateKey] = data;
+                });
 
                 showSyncStatus('done');
 
-                // Migration: if cloud empty but local has data, offer one-time migrate
-                if (cloudRecords.length === 0 && records.length > 0) {
-                    if (confirm(`☁️ 雲端尚無資料，但偵測到 ${records.length} 筆本地紀錄。\n是否將本地紀錄一次性遷移到雲端？`)) {
-                        showSyncStatus('syncing');
-                        await Promise.all([
-                            ...records.map(r => firestoreSaveRecord(r)),
-                            ...Object.entries(bodyStats).map(([k, v]) => firestoreSaveBodyStat(k, v))
-                        ]);
-                        showSyncStatus('done');
-                    }
-                }
-
-                // Single Source of Truth: if cloud empty, arrays stay empty. No fallback.
-                records = cloudRecords;
-                bodyStats = cloudStats;
-
-                updateUI();
+                // 關鍵：資料完全載入後，依序執行 UI 更新與圖表渲染
+                if (typeof window.updateUI === 'function') window.updateUI();
+                if (typeof renderTrendChart === 'function') renderTrendChart();
             } catch (e) {
-                console.error('Firestore load failed:', e);
+                console.error("Firebase 載入失敗:", e);
                 showSyncStatus('error');
             }
         }
@@ -2254,7 +2347,7 @@
         const emptyState = document.getElementById('empty-state');
 
         // Dashboard Elements for animation
-        const counterElements = {
+        window.counterElements = {
             totalCalories: { el: document.getElementById('total-calories'), current: 0, target: 0, isDecimal: false },
             totalCarbs: { el: document.getElementById('total-carbs'), current: 0, target: 0, isDecimal: true },
             totalProtein: { el: document.getElementById('total-protein'), current: 0, target: 0, isDecimal: true },
@@ -2298,12 +2391,12 @@
             }
         }
 
-        function triggerAnimations() {
+        window.triggerAnimations = function () {
             requestAnimationFrame(animateNumbers);
         }
 
         // Handlers
-        exerciseForm.addEventListener('submit', (e) => {
+        exerciseForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const typeSelect = document.getElementById('ex-type');
             if (!typeSelect.value) return;
@@ -2321,10 +2414,8 @@
                 timestamp: dateFromSelected()
             };
 
-            records.unshift(record);
-            firestoreSaveRecord(record);
+            await window.firestoreSaveRecord(record);
             exerciseForm.reset();
-            updateUI();
         });
 
         function renderFoodOptions() {
@@ -2350,12 +2441,12 @@
             });
         }
 
-        document.getElementById('toggle-custom-food-btn').addEventListener('click', () => {
+        document.getElementById('toggle-custom-food-btn')?.addEventListener('click', () => {
             const isHidden = customFoodForm.style.display === 'none';
             customFoodForm.style.display = isHidden ? 'block' : 'none';
         });
 
-        customFoodForm.addEventListener('submit', (e) => {
+        customFoodForm?.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('custom-name').value;
             const carbs = parseFloat(document.getElementById('custom-carbs').value);
@@ -2484,12 +2575,12 @@
             reader.readAsDataURL(file);
         }
 
-        photoInput.addEventListener('change', e => {
+        photoInput?.addEventListener('change', e => {
             const file = e.target.files[0];
             if (file) analyzeAndFill(file);
         });
 
-        removePhotoBtn.addEventListener('click', () => {
+        removePhotoBtn?.addEventListener('click', () => {
             photoInput.value = '';
             currentPhotoBase64 = null;
             photoPreviewContainer.style.display = 'none';
@@ -2497,64 +2588,78 @@
             aiResultBadge.style.display = 'none';
         });
 
-        dietForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const foodId = foodSelect.value;
-            const weightRaw = document.getElementById('diet-weight').value;
-            const weight = parseFloat(weightRaw);
-            const mealPeriod = document.getElementById('diet-meal-period').value || '午餐';
+        if (dietForm) {
+            dietForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-            let record;
+                // 1. 食物選單與重量
+                const foodId = document.getElementById('diet-food-select').value;
+                const weight = parseFloat(document.getElementById('diet-weight').value);
+                const mealPeriod = document.getElementById('diet-meal-period').value;
 
-            if (foodId && !isNaN(weight) && weight > 0) {
-                // ── Numeric path: full nutrition calculation ──
-                const food = foodDatabase.find(f => f.id === foodId);
-                if (!food) return;
-                const mult = weight / 100;
-                const carbsCalc = food.carbs * mult;
-                const proteinCalc = food.protein * mult;
-                const fatCalc = food.fat * mult;
-                const calories = Math.ceil((carbsCalc * 4) + (proteinCalc * 4) + (fatCalc * 9));
-                record = {
-                    id: crypto.randomUUID(),
+                // 2. 純文字選項
+                const textName = document.getElementById('diet-text-name')?.value.trim();
+
+                const selectedDateVal = document.getElementById('record-date-input')?.value;
+                const now = new Date();
+                let finalIso = now.toISOString();
+
+                if (selectedDateVal) {
+                    const timeString = now.toTimeString().split(' ')[0];
+                    finalIso = new Date(`${selectedDateVal}T${timeString}`).toISOString();
+                }
+
+                let record = {
+                    userId: window.currentUser ? window.currentUser.uid : 'guest',
                     category: 'diet',
-                    name: `${food.name} (${weight}g)`,
-                    group: food.group,
-                    mealPeriod,
-                    carbs: parseFloat(carbsCalc.toFixed(1)),
-                    protein: parseFloat(proteinCalc.toFixed(1)),
-                    fat: parseFloat(fatCalc.toFixed(1)),
-                    calories,
-                    timestamp: dateFromSelected()
+                    mealPeriod: mealPeriod,
+                    timestamp: finalIso
                 };
-            } else {
-                // ── Text-only path: free description, no nutritional data ──
-                const customName = document.getElementById('diet-text-name').value.trim();
-                const fallbackName = foodId
-                    ? (foodDatabase.find(f => f.id === foodId)?.name || '外食')
-                    : customName;
-                if (!fallbackName) return; // nothing to save
-                record = {
-                    id: crypto.randomUUID(),
-                    category: 'diet',
-                    isTextOnly: true,
-                    name: fallbackName,
-                    group: '外食/其他',
-                    mealPeriod,
-                    carbs: 0, protein: 0, fat: 0, calories: 0,
-                    timestamp: dateFromSelected()
-                };
-            }
 
-            records.unshift(record);
-            firestoreSaveRecord(record);
-            dietForm.reset();
-            document.getElementById('diet-text-name').value = '';
-            currentPhotoBase64 = null;
-            photoPreviewContainer.style.display = 'none';
-            photoPreview.src = '';
-            updateUI();
-        });
+                if (foodId && weight > 0) {
+                    const food = foodDatabase.find(f => f.id === foodId);
+                    if (food) {
+                        const mult = weight / 100;
+                        record.name = `${food.name} (${weight}g)`;
+                        record.carbs = Number((food.carbs * mult).toFixed(1));
+                        record.protein = Number((food.protein * mult).toFixed(1));
+                        record.fat = Number((food.fat * mult).toFixed(1));
+                        record.calories = Math.ceil((record.carbs * 4) + (record.protein * 4) + (record.fat * 9));
+                    }
+                } else if (textName) {
+                    record.name = textName;
+                    record.calories = 0; record.carbs = 0; record.protein = 0; record.fat = 0;
+                } else {
+                    return alert("❌ 請選擇食物並輸入重量，或是填寫純文字紀錄！");
+                }
+
+                try {
+                    // 動態載入 Firebase (保障相容)
+                    const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js");
+                    const docRef = await addDoc(collection(db, "records"), record);
+
+                    // 立即注入本地 cache 並強制刷新
+                    window.records.unshift({ id: docRef.id, ...record });
+                    dietForm.reset();
+
+                    // 清理照片快取 UI
+                    if (typeof currentPhotoBase64 !== 'undefined') currentPhotoBase64 = null;
+                    const photoPreviewContainer = document.getElementById('photo-preview-container');
+                    const photoPreview = document.getElementById('photo-preview');
+                    const aiResultBadge = document.getElementById('ai-result-badge');
+                    if (photoPreviewContainer) photoPreviewContainer.style.display = 'none';
+                    if (photoPreview) photoPreview.src = '';
+                    if (aiResultBadge) aiResultBadge.style.display = 'none';
+
+                    // 核心命令：啟動全域刷新
+                    window.updateUI();
+
+                } catch (err) {
+                    console.error("儲存失敗:", err);
+                    alert("⚠️ 儲存失敗！請檢查您的網路或 Firebase 權限。\n錯誤指令: " + err.message);
+                }
+            });
+        }
 
         /** Quick-tag: save a text-only record instantly */
         window.logTextOnly = function (label) {
@@ -2569,8 +2674,7 @@
                 carbs: 0, protein: 0, fat: 0, calories: 0,
                 timestamp: dateFromSelected()
             };
-            records.unshift(record);
-            firestoreSaveRecord(record);
+            window.firestoreSaveRecord(record);
             updateUI();
         };
 
@@ -2585,11 +2689,11 @@
         const modalOverlay = document.getElementById('photo-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
 
-        closeModalBtn.addEventListener('click', () => {
+        closeModalBtn?.addEventListener('click', () => {
             modalOverlay.classList.remove('show');
         });
 
-        modalOverlay.addEventListener('click', (e) => {
+        modalOverlay?.addEventListener('click', (e) => {
             if (e.target === modalOverlay) {
                 modalOverlay.classList.remove('show');
             }
@@ -2597,15 +2701,30 @@
 
         // Water Global Functions
         window.addWater = function (amount) {
+            if (!window.currentUser) return alert('請先登入！');
+
+            // 使用選取日期 + 當前時間組合 ISO timestamp
+            const dateInputVal = document.getElementById('record-date-input')?.value;
+            const now = new Date();
+            let isoTs = now.toISOString();
+            if (dateInputVal) {
+                isoTs = new Date(`${dateInputVal}T${now.toTimeString().split(' ')[0]}`).toISOString();
+            }
+
             const record = {
-                id: crypto.randomUUID(),
-                category: 'water',
+                category: 'water',          // 確保分類明確
                 amount: Math.ceil(amount),
-                timestamp: dateFromSelected()
+                userId: window.currentUser.uid, // 確保綁定使用者
+                timestamp: isoTs               // 確保時間正確
             };
-            records.unshift(record);
-            firestoreSaveRecord(record);
-            updateUI();
+
+            // 立即注入本地陣列，讓 UI 即時反映（不等 Firebase）
+            if (!window.records) window.records = [];
+            window.records.unshift({ id: 'temp-' + Date.now(), ...record });
+            window.updateUI();
+
+            // 非同步存入 Firebase（有錯才 alert）
+            window.firestoreSaveRecord(record);
         };
 
         window.addManualWater = function () {
@@ -2613,6 +2732,27 @@
             if (!isNaN(val) && val > 0) {
                 addWater(val);
                 document.getElementById('manual-water').value = '';
+            }
+        };
+
+        // ─── Firebase 資料儲存 (體重) ───
+        window.firestoreSaveBodyStat = async function (dateVal, dateKey, data) {
+            if (!window.currentUser) return;
+            try {
+                showSyncStatus('syncing');
+                await setDoc(doc(db, "bodyStats", `${window.currentUser.uid}_${dateVal}`), {
+                    userId: window.currentUser.uid,
+                    date: dateVal,
+                    _dateKey: dateKey,
+                    ...data,
+                    timestamp: new Date().toISOString()
+                });
+                window.bodyStats[dateKey] = data;
+                if (typeof window.updateUI === 'function') window.updateUI();
+                showSyncStatus('done');
+            } catch (e) {
+                console.error("儲存體重失敗:", e);
+                showSyncStatus('error');
             }
         };
 
@@ -2634,17 +2774,24 @@
                 const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
                 const dateKey = dObj.toLocaleDateString('zh-TW', options);
 
-                if (!bodyStats[dateKey]) bodyStats[dateKey] = {};
-                bodyStats[dateKey].date = dateVal; // explicitly save the YYYY-MM-DD standard string
-                if (!isNaN(weightVal)) bodyStats[dateKey].weight = weightVal.toFixed(1);
-                if (!isNaN(fatVal)) bodyStats[dateKey].fat = fatVal.toFixed(1);
+                if (!window.bodyStats[dateKey]) window.bodyStats[dateKey] = {};
+                window.bodyStats[dateKey].date = dateVal; // explicitly save the YYYY-MM-DD standard string
+                if (!isNaN(weightVal)) window.bodyStats[dateKey].weight = weightVal.toFixed(1);
+                if (!isNaN(fatVal)) window.bodyStats[dateKey].fat = fatVal.toFixed(1);
 
                 const isPeriod = document.getElementById('periodToggle').checked;
-                bodyStats[dateKey].isPeriod = isPeriod;
+                window.bodyStats[dateKey].isPeriod = isPeriod;
 
-                firestoreSaveBodyStat(dateVal, dateKey, bodyStats[dateKey]);
-                updateUI();
-                alert(`✅ 已儲存 ${dateVal} 之數據`);
+                window.firestoreSaveBodyStat(dateVal, dateKey, window.bodyStats[dateKey])
+                    .then(() => {
+                        if (typeof renderTrendChart === 'function') renderTrendChart();
+                        alert(`✅ 已儲存 ${dateVal} 之數據並更新圖表`);
+                    })
+                    .catch(err => {
+                        console.error('儲存體職數據失敗:', err);
+                        alert('⚠️ 儲存失敗！' + err.message);
+                    });
+
                 document.getElementById('weightInput').value = '';
                 document.getElementById('fatInput').value = '';
             } else {
@@ -2666,32 +2813,9 @@
             renderHistory(); // re-render with new goal
         };
 
-        // Global delete function
-        window.deleteRecord = function (id) {
-            const index = records.findIndex(r => r.id === id);
-            if (index !== -1) {
-                records.splice(index, 1);
-                firestoreDeleteRecord(id);   // cloud delete (async, non-blocking)
-                updateUI();
-            }
-        }
+        // 原本這行 fetchInsightsBtn 會導致崩潰，現在已移除 (由 DOMContentLoaded 安全綁定)
+        // 強制掛載到 window，並修正變數名稱為 records
 
-        // Update UI
-        function updateUI() {
-            try {
-                localStorage.setItem('fitTrackRecords', JSON.stringify(records));
-                localStorage.setItem('fitTrackBodyStats', JSON.stringify(bodyStats));
-            } catch (e) {
-                if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-                    alert('⚠️ 瀏覽器儲存空間已滿！請點擊「匯出本月報表」將紀錄備份，然後從清單中刪除些許含有照片的舊紀錄以釋放空間。');
-                } else {
-                    console.error("Local storage save fail", e);
-                }
-            }
-            renderHistory();
-            updateDashboard();
-            renderTrendChart();
-        }
 
         function analyzeCycle(dataArray) {
             if (!dataArray || dataArray.length === 0) return;
@@ -3036,484 +3160,8 @@
         };
 
 
-        function renderHistory() {
-            // Remove all existing date cards
-            const existingCards = historyContainer.querySelectorAll('.date-card');
-            existingCards.forEach(c => c.remove());
 
-            // Filter records to only the selected date
-            const selectedISO = document.getElementById('record-date-input').value || todayISO();
-            const visibleRecords = records.filter(r => {
-                const d = new Date(r.timestamp);
-                const rISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                return rISO === selectedISO;
-            });
 
-            if (visibleRecords.length === 0) {
-                emptyState.style.display = 'block';
-                return;
-            } else {
-                emptyState.style.display = 'none';
-            }
-
-            // Group by date (will only be one group since we've already filtered)
-            const grouped = {};
-            const options = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
-
-            visibleRecords.forEach(record => {
-                const dateObj = new Date(record.timestamp);
-                const dateKey = dateObj.toLocaleDateString('zh-TW', options);
-
-                if (!grouped[dateKey]) {
-                    grouped[dateKey] = {
-                        dateStr: dateKey,
-                        items: [],
-                        totalLoad: 0,
-                        totalCals: 0,
-                        totalWater: 0,
-                        totalProtein: 0
-                    };
-                }
-
-                grouped[dateKey].items.push(record);
-
-                if (record.category === 'exercise') {
-                    grouped[dateKey].totalLoad += record.load;
-                } else if (record.category === 'diet') {
-                    grouped[dateKey].totalCals = Math.ceil(grouped[dateKey].totalCals + record.calories);
-                    grouped[dateKey].totalProtein += record.protein;
-                } else if (record.category === 'water') {
-                    grouped[dateKey].totalWater += record.amount;
-                }
-            });
-
-            const sortedDateKeys = Object.keys(grouped).sort((a, b) => {
-                // simple split parse for string like "2026/03/03 星期二"
-                const dateA = new Date(a.split(' ')[0]);
-                const dateB = new Date(b.split(' ')[0]);
-                return dateB - dateA;
-            });
-
-            sortedDateKeys.forEach(dateKey => {
-                const group = grouped[dateKey];
-                // Sort items newest-first within each day
-                group.items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                const card = document.createElement('div');
-                card.className = 'date-card';
-
-                const waterPercent = Math.min(100, Math.round((group.totalWater / 2000) * 100));
-
-                const proteinGoal = parseInt(document.getElementById('protein-goal-input').value) || 120;
-                const totalProteinCeil = Math.ceil(group.totalProtein);
-                const proteinPercent = Math.min(100, Math.round((totalProteinCeil / proteinGoal) * 100));
-                const proteinMet = totalProteinCeil >= proteinGoal;
-                const proteinOverflow = totalProteinCeil > proteinGoal * 1.2;
-                const proteinFillColor = proteinOverflow ? '#e74c3c' : (proteinMet ? '#2ecc71' : '#f39c12');
-                const proteinBarExtra = proteinOverflow ? 'animation:blink 0.8s step-start infinite;' : '';
-                const proteinRemaining = Math.max(0, proteinGoal - totalProteinCeil);
-                const waterRemaining = Math.max(0, 2000 - group.totalWater);
-
-                const stats = bodyStats[dateKey];
-                const weightPill = stats?.weight ? `<div class="date-stat-pill stat-weight">⚖️ 體重 <span class="pill-val">${stats.weight} kg</span></div>` : '';
-                const fatPill = stats?.fat ? `<div class="date-stat-pill stat-fat">🔬 體脂 <span class="pill-val">${stats.fat} %</span></div>` : '';
-
-                const header = document.createElement('div');
-                header.className = 'date-card-header';
-                header.innerHTML = `
-                    <!-- Row 1: Date -->
-                    <h3 style="font-weight:900;">📅 ${group.dateStr}</h3>
-
-                    <!-- Row 2: Progress bars (pills row removed) -->
-                    <div class="date-progress-row">
-                        <div class="progress-group">
-                            <label>
-                                <span style="color:#3498db;font-size:0.85rem;">💧 飲水: ${group.totalWater} / 2000 cc</span>
-                                <span style="color:var(--text-secondary);font-size:0.78rem;">${group.totalWater >= 2000 ? '已達成 ✅' : '還差 ' + waterRemaining + ' cc'}</span>
-                            </label>
-                            <div class="prog-bar">
-                                <div class="prog-fill" style="width:${waterPercent}%;background:#3498db;"></div>
-                            </div>
-                        </div>
-                        <div class="progress-group">
-                            <label>
-                                <span style="color:${proteinFillColor};font-size:0.85rem;">🍖 蛋白: ${totalProteinCeil} / ${proteinGoal} g</span>
-                                <span style="color:var(--text-secondary);font-size:0.78rem;">${proteinMet ? '已達成目標 ✅' : '還差 ' + proteinRemaining + 'g'}</span>
-                            </label>
-                            <div class="prog-bar">
-                                <div class="prog-fill" style="width:${proteinPercent}%;background:${proteinFillColor};${proteinBarExtra}"></div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                card.appendChild(header);
-
-                // Separate records by type
-                const exerciseItems = group.items.filter(r => r.category === 'exercise');
-                const waterItems = group.items.filter(r => r.category === 'water');
-                const dietItems = group.items.filter(r => r.category === 'diet');
-
-                // Helper: add accordion toggle behaviour
-                function makeAccordion(el) {
-                    el.addEventListener('click', e => {
-                        // Don't collapse when clicking the delete button itself
-                        if (e.target.closest('.ri-delete')) return;
-                        el.classList.toggle('expanded');
-                    });
-                    return el;
-                }
-
-                // Format timestamp to HH:MM
-                function fmtTime(ts) {
-                    const d = new Date(ts);
-                    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                }
-
-                // Helper: build a trash SVG string
-                const trashSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
-
-                function buildExerciseDiv(record) {
-                    const d = document.createElement('div');
-                    d.className = 'record-item exercise';
-                    const noteBadge = record.note
-                        ? `<span style="display:inline-block;margin-left:0.4rem;padding:0.15rem 0.55rem;background:#f0f2f5;border-radius:20px;font-size:0.72rem;color:#7f8c99;font-weight:500;vertical-align:middle;">${record.note}</span>`
-                        : '';
-                    d.innerHTML = `
-                        <div class="ri-header">
-                            <span class="ri-name">🏃‍♂️ ${record.type}${noteBadge}</span>
-                            <span class="ri-value">${record.load} Load</span>
-                            <span class="ri-toggle">❯</span>
-                        </div>
-                        <div class="ri-body">
-                            <div class="ri-body-inner">
-                                <div class="ri-detail-row">
-                                    <span class="ri-chip">⏱ <strong>${record.time}</strong> 分鐘</span>
-                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
-                                    ${record.note ? `<span class="ri-chip">📝 ${record.note}</span>` : ''}
-                                </div>
-                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
-                            </div>
-                        </div>`;
-                    return makeAccordion(d);
-                }
-
-                function buildDietDiv(record) {
-                    const isTextOnly = !!record.isTextOnly;
-                    const isVeggie = record.group === '蔬菜類';
-                    const d = document.createElement('div');
-                    d.className = `record-item diet${isVeggie ? ' vegetable' : ''}${isTextOnly ? ' text-only' : ''}`;
-
-                    if (isTextOnly) {
-                        // Minimal display: name + time + delete only
-                        d.innerHTML = `
-                            <div class="ri-header">
-                                <span class="ri-name">📝 ${record.name}</span>
-                                <span class="ri-toggle">❯</span>
-                            </div>
-                            <div class="ri-body">
-                                <div class="ri-body-inner">
-                                    <div class="ri-detail-row">
-                                        <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
-                                        <span class="ri-chip" style="color:#b0b8c4;">外食 / 未估算</span>
-                                    </div>
-                                    <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
-                                </div>
-                            </div>`;
-                    } else {
-                        d.innerHTML = `
-                            <div class="ri-header">
-                                <span class="ri-name">🥗 ${record.name}</span>
-                                <span class="ri-value">${Math.ceil(record.calories)} kcal</span>
-                                <span class="ri-toggle">❯</span>
-                            </div>
-                            <div class="ri-body">
-                                <div class="ri-body-inner">
-                                    <div class="ri-detail-row">
-                                        <span class="ri-chip">🍖 <strong>${record.protein}g</strong> 蛋白</span>
-                                        <span class="ri-chip">🍞 ${record.carbs}g 碳水</span>
-                                        <span class="ri-chip">🧈 ${record.fat}g 脂肪</span>
-                                        <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
-                                    </div>
-                                    <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
-                                </div>
-                            </div>`;
-                    }
-                    return makeAccordion(d);
-                }
-
-                function buildWaterDiv(record) {
-                    const d = document.createElement('div');
-                    d.className = 'record-item water';
-                    d.innerHTML = `
-                        <div class="ri-header">
-                            <span class="ri-name" style="color:#3498db;">💧 飲水</span>
-                            <span class="ri-value" style="color:#3498db;">${record.amount} cc</span>
-                            <span class="ri-toggle">❯</span>
-                        </div>
-                        <div class="ri-body">
-                            <div class="ri-body-inner">
-                                <div class="ri-detail-row">
-                                    <span class="ri-chip">⏰ <strong>${fmtTime(record.timestamp)}</strong></span>
-                                </div>
-                                <button class="ri-delete" onclick="deleteRecord('${record.id}')">${trashSvg} 刪除</button>
-                            </div>
-                        </div>`;
-                    return makeAccordion(d);
-                }
-
-                const MEAL_ORDER = ['早餐', '午餐', '晵餐', '點心/其他'];
-                const MEAL_EMOJI = { '早餐': '☀️', '午餐': '☀️️', '晵餐': '🌙', '點心/其他': '🍪' };
-
-                /**
-                 * Build a collapsible period-group accordion.
-                 * @param {string} label      Display name
-                 * @param {string} emoji      Prefix emoji
-                 * @param {Array}  items      Record items for this group
-                 * @param {string[]} chips    Subtotal chip strings
-                 * @param {Function} buildFn  Record-item builder
-                 * @param {boolean} defaultOpen
-                 */
-                function buildPeriodGroup(label, emoji, items, chips, buildFn, defaultOpen = true) {
-                    const group = document.createElement('div');
-                    group.className = `period-group${defaultOpen ? ' open' : ''}`;
-
-                    const chipHtml = chips.map(c => `<span class="pg-chip">${c}</span>`).join('');
-                    const hdr = document.createElement('div');
-                    hdr.className = 'period-group-header';
-                    hdr.innerHTML = `
-                        <span class="pg-label">${emoji} ${label}</span>
-                        <div class="pg-meta">${chipHtml}<span class="pg-arrow">❯</span></div>`;
-                    hdr.addEventListener('click', () => group.classList.toggle('open'));
-
-                    const body = document.createElement('div');
-                    body.className = 'period-group-body';
-                    items.forEach(r => body.appendChild(buildFn(r)));
-
-                    group.appendChild(hdr);
-                    group.appendChild(body);
-                    return group;
-                }
-
-                // —— Exercise group ————————————————————————————
-                if (exerciseItems.length > 0) {
-                    const exLoad = exerciseItems.reduce((s, r) => s + r.load, 0);
-                    const exTime = exerciseItems.reduce((s, r) => s + r.time, 0);
-                    card.appendChild(buildPeriodGroup(
-                        '運動紀錄', '💪', exerciseItems,
-                        [`${exLoad} Load`, `${exTime} 分鐘`],
-                        buildExerciseDiv, false
-                    ));
-                }
-
-                // —— Diet groups by meal period ———————————————————
-                const periodsInDay = MEAL_ORDER.filter(p => dietItems.some(r => (r.mealPeriod || '午餐') === p));
-                dietItems.forEach(r => {
-                    const mp = r.mealPeriod || '午餐';
-                    if (!periodsInDay.includes(mp)) periodsInDay.push(mp);
-                });
-
-                periodsInDay.forEach(period => {
-                    const pItems = dietItems.filter(r => (r.mealPeriod || '午餐') === period);
-                    if (pItems.length === 0) return;
-                    const pCals = pItems.reduce((s, r) => s + r.calories, 0);
-                    const pProt = pItems.reduce((s, r) => s + r.protein, 0);
-                    card.appendChild(buildPeriodGroup(
-                        period, MEAL_EMOJI[period] || '🍴', pItems,
-                        [`${Math.ceil(pCals)} kcal`, `${pProt.toFixed(1)}g 蛋白`],
-                        buildDietDiv, false
-                    ));
-                });
-
-                // —— Water group —————————————————————————————
-                if (waterItems.length > 0) {
-                    const wTotal = waterItems.reduce((s, r) => s + r.amount, 0);
-                    card.appendChild(buildPeriodGroup(
-                        '飲水', '💧', waterItems,
-                        [`${wTotal} cc`],
-                        buildWaterDiv, false
-                    ));
-                }
-
-                historyContainer.appendChild(card);
-            });
-        }
-
-        function updateDashboard() {
-            // Use the selected date from the date picker
-            const todayStr = document.getElementById('record-date-input').value;
-
-            // All totals reset to 0 on every call
-            let totalCals = 0;
-            let totalCarbsVal = 0;
-            let totalProteinVal = 0;
-            let totalFatVal = 0;
-            let totalLoadVal = 0;
-            let totalTimeVal = 0;
-
-            records.forEach(record => {
-                // Only count records that belong to TODAY
-                const recDate = new Date(record.timestamp);
-                const recStr = `${recDate.getFullYear()}-${String(recDate.getMonth() + 1).padStart(2, '0')}-${String(recDate.getDate()).padStart(2, '0')}`;
-                if (recStr !== todayStr) return;
-
-                if (record.category === 'diet') {
-                    totalCals += record.calories;
-                    totalCarbsVal += record.carbs;
-                    totalProteinVal += record.protein;
-                    totalFatVal += record.fat;
-                } else if (record.category === 'exercise') {
-                    totalLoadVal += record.load;
-                    totalTimeVal += record.time;
-                }
-            });
-
-            // Update animation targets
-            counterElements.totalCalories.target = Math.ceil(totalCals);
-            counterElements.totalCarbs.target = totalCarbsVal;
-            counterElements.totalProtein.target = totalProteinVal;
-            counterElements.totalFat.target = totalFatVal;
-            counterElements.totalLoad.target = totalLoadVal;
-            counterElements.totalTime.target = totalTimeVal;
-
-            triggerAnimations();
-        }
-
-        // Export Functionality
-        document.getElementById('export-excel-btn').addEventListener('click', () => {
-            const mInput = document.getElementById('export-month').value;
-            if (!mInput) { alert('請先選擇要匯出的月份！'); return; }
-
-            const [year, month] = mInput.split('-');
-            const targetYear = parseInt(year);
-            const targetMonth = parseInt(month) - 1;
-
-            const monthRecords = records.filter(r => {
-                const d = new Date(r.timestamp);
-                return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
-            });
-
-            if (monthRecords.length === 0) { alert('該月份沒有任何紀錄可以匯出！'); return; }
-
-            // ── PASS 1: Pre-compute daily aggregates ───────────────────────
-            const dailyTotals = {}; // keyed by dateStr
-            monthRecords.forEach(r => {
-                const k = new Date(r.timestamp).toLocaleDateString('zh-TW');
-                if (!dailyTotals[k]) {
-                    dailyTotals[k] = { cals: 0, carbs: 0, protein: 0, fat: 0, water: 0, load: 0 };
-                }
-                if (r.category === 'diet') {
-                    dailyTotals[k].cals += r.calories || 0;
-                    dailyTotals[k].carbs += r.carbs || 0;
-                    dailyTotals[k].protein += r.protein || 0;
-                    dailyTotals[k].fat += r.fat || 0;
-                } else if (r.category === 'water') {
-                    dailyTotals[k].water += r.amount || 0;
-                } else if (r.category === 'exercise') {
-                    dailyTotals[k].load += r.load || 0;
-                }
-            });
-
-            // ── PASS 2: Sort records ────────────────────────────────────────
-            const MEAL_ORDER = ['早餐', '午餐', '晚餐', '點心/其他', '運動', '飲水'];
-            const mealRank = p => { const i = MEAL_ORDER.indexOf(p); return i === -1 ? 99 : i; };
-
-            const sorted = [...monthRecords].sort((a, b) => {
-                const da = new Date(a.timestamp), db = new Date(b.timestamp);
-                if (da.toDateString() !== db.toDateString()) return db - da; // newest first
-                const pa = a.category === 'exercise' ? '運動' : a.category === 'water' ? '飲水' : (a.mealPeriod || '午餐');
-                const pb = b.category === 'exercise' ? '運動' : b.category === 'water' ? '飲水' : (b.mealPeriod || '午餐');
-                return mealRank(pa) - mealRank(pb);
-            });
-
-            // ── PASS 3: Build rows ──────────────────────────────────────────
-            const rows = sorted.map(r => {
-                const dateStr = new Date(r.timestamp).toLocaleDateString('zh-TW');
-                const dt = dailyTotals[dateStr];
-
-                // ── Body stats: match key using SAME format as addBodyStats ──
-                const statsDateOptions = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
-                const statsDateKey = new Date(r.timestamp).toLocaleDateString('zh-TW', statsDateOptions);
-                const bStats = bodyStats[statsDateKey] || {};
-
-                // Shared daily total columns (all integers)
-                const dailyCols = {
-                    '當日總熱量(kcal)': Math.ceil(dt.cals),
-                    '當日總碳水(g)': Math.ceil(dt.carbs),
-                    '當日總蛋白(g)': Math.ceil(dt.protein),
-                    '當日總脂肪(g)': Math.ceil(dt.fat),
-                    '當日總飲水(cc)': Math.ceil(dt.water),
-                    '當日總負荷': Math.ceil(dt.load)
-                };
-
-                const bodyStatsCols = {
-                    '體重(kg)': bStats.weight ? parseFloat(bStats.weight).toFixed(1) : '未紀錄',
-                    '體脂(%)': bStats.fat ? parseFloat(bStats.fat).toFixed(1) : '未紀錄'
-                };
-
-                if (r.category === 'exercise') {
-                    return {
-                        '日期': dateStr,
-                        ...bodyStatsCols,
-                        '時段': '運動',
-                        '項目名稱': r.type,
-                        '份量': `${r.time} 分鐘`,
-                        '單項負荷': r.load,
-                        '單項熱量(kcal)': 0,
-                        ...dailyCols
-                    };
-                } else if (r.category === 'diet') {
-                    const gramsMatch = r.name.match(/\((\d+(?:\.\d+)?)g\)/);
-                    return {
-                        '日期': dateStr,
-                        ...bodyStatsCols,
-                        '時段': r.mealPeriod || '午餐',
-                        '項目名稱': r.name,
-                        '份量': gramsMatch ? gramsMatch[1] + 'g' : '-',
-                        '單項負荷': 0,
-                        '單項熱量(kcal)': Math.ceil(r.calories),
-                        ...dailyCols
-                    };
-                } else {
-                    return {
-                        '日期': dateStr,
-                        ...bodyStatsCols,
-                        '時段': '飲水',
-                        '項目名稱': '飲水紀錄',
-                        '份量': `${r.amount} cc`,
-                        '單項負荷': 0,
-                        '單項熱量(kcal)': 0,
-                        ...dailyCols
-                    };
-                }
-            });
-
-            // ── Build workbook ──────────────────────────────────────────────
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(rows);
-            ws['!cols'] = [
-                { wch: 14 }, // 日期
-                { wch: 10 }, // 體重
-                { wch: 9 }, // 體脂
-                { wch: 10 }, // 時段
-                { wch: 24 }, // 項目名稱
-                { wch: 10 }, // 份量
-                { wch: 10 }, // 單項負荷
-                { wch: 14 }, // 單項熱量
-                { wch: 14 }, // 當日總熱量
-                { wch: 13 }, // 當日總碳水
-                { wch: 13 }, // 當日總蛋白
-                { wch: 13 }, // 當日總脂肪
-                { wch: 14 }, // 當日總飲水
-                { wch: 12 }  // 當日總負荷
-            ];
-            XLSX.utils.book_append_sheet(wb, ws, '健康日誌明細');
-
-            // Filename: 健康紀錄報表_YYYYMMDD.xlsx (today's date)
-            const today = new Date();
-            const stamp = today.getFullYear().toString()
-                + String(today.getMonth() + 1).padStart(2, '0')
-                + String(today.getDate()).padStart(2, '0');
-            XLSX.writeFile(wb, `健康紀錄報表_${stamp}.xlsx`);
-        });
 
         // Init Data Load (mock starting data based on instructions)
         function setDefaultMonth() {
@@ -3538,33 +3186,196 @@
             if (sel) sel.value = period;
         }
 
-        // ─── Init ─────────────────────────────────────────────────────────
-        setDefaultMonth();
-        setDefaultDate();   // init date picker to today
-        setDefaultMealPeriod();
-        renderFoodOptions();
+        // --- 【修正後的安全綁定區塊】 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const bindEvent = (id, event, fn) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener(event, fn);
+                } else {
+                    console.warn(`[警告] 找不到 HTML 元素 ID: ${id}，已跳過綁定。`);
+                }
+            };
 
-        // Accordion toggle (default: collapsed)
-        document.getElementById('history-toggle-btn').addEventListener('click', () => {
-            const btn = document.getElementById('history-toggle-btn');
-            const container = document.getElementById('history-container');
-            btn.classList.toggle('collapsed');
-            container.classList.toggle('collapsed');
-        });
+            // 1. 基本登入登出
+            bindEvent('google-signin-btn', 'click', () => signInWithPopup(auth, provider));
+            bindEvent('signout-btn', 'click', () => signOut(auth));
 
-        // Date picker: refresh dashboard + history on change
-        document.getElementById('record-date-input').addEventListener('change', () => {
-            updateDateViewingBadge();
-            updateUI();
-        });
-        document.getElementById('back-to-today-btn').addEventListener('click', () => {
-            document.getElementById('record-date-input').value = todayISO();
-            updateDateViewingBadge();
-            updateUI();
-        });
+            // 2. 歷史紀錄切換
+            bindEvent('history-toggle-btn', 'click', () => {
+                const container = document.getElementById('history-container');
+                const btn = document.getElementById('history-toggle-btn');
+                if (container) container.classList.toggle('collapsed');
+                if (btn) btn.classList.toggle('collapsed');
+            });
 
-        updateUI();          // instant local render (from localStorage)
-        loadFromFirestore(); // async: fetches cloud data, re-renders when ready
+            // 3. 日期切換與回今天
+            const dateInput = document.getElementById('record-date-input');
+            if (dateInput) {
+                const today = typeof todayISO === 'function' ? todayISO() : new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+                dateInput.addEventListener('change', () => {
+                    if (typeof updateDateViewingBadge === 'function') updateDateViewingBadge();
+                    if (typeof window.updateUI === 'function') window.updateUI();
+                });
+            }
+
+            bindEvent('back-to-today-btn', 'click', () => {
+                if (dateInput) {
+                    dateInput.value = todayISO();
+                    if (typeof updateDateViewingBadge === 'function') updateDateViewingBadge();
+                    if (typeof window.updateUI === 'function') window.updateUI();
+                }
+            });
+
+            // 初始化其他 UI 函數...
+            if (typeof setDefaultMonth === 'function') setDefaultMonth();
+            if (typeof setDefaultMealPeriod === 'function') setDefaultMealPeriod();
+            if (typeof renderFoodOptions === 'function') renderFoodOptions();
+
+            // Export Excel logic
+            const exportBtn = document.getElementById('export-excel-btn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    const mInput = document.getElementById('export-month').value;
+                    if (!mInput) { alert('請先選擇要匯出的月份！'); return; }
+
+                    const [year, month] = mInput.split('-');
+                    const targetYear = parseInt(year);
+                    const targetMonth = parseInt(month) - 1;
+
+                    const monthRecords = records.filter(r => {
+                        const d = new Date(r.timestamp);
+                        return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+                    });
+
+                    if (monthRecords.length === 0) { alert('該月份沒有任何紀錄可以匯出！'); return; }
+
+                    // ── PASS 1: Pre-compute daily aggregates ───────────────────────
+                    const dailyTotals = {}; // keyed by dateStr
+                    monthRecords.forEach(r => {
+                        const k = new Date(r.timestamp).toLocaleDateString('zh-TW');
+                        if (!dailyTotals[k]) {
+                            dailyTotals[k] = { cals: 0, carbs: 0, protein: 0, fat: 0, water: 0, load: 0 };
+                        }
+                        if (r.category === 'diet') {
+                            dailyTotals[k].cals += r.calories || 0;
+                            dailyTotals[k].carbs += r.carbs || 0;
+                            dailyTotals[k].protein += r.protein || 0;
+                            dailyTotals[k].fat += r.fat || 0;
+                        } else if (r.category === 'water') {
+                            dailyTotals[k].water += r.amount || 0;
+                        } else if (r.category === 'exercise') {
+                            dailyTotals[k].load += r.load || 0;
+                        }
+                    });
+
+                    // ── PASS 2: Sort records ────────────────────────────────────────
+                    const MEAL_ORDER = ['早餐', '午餐', '晚餐', '點心/其他', '運動', '飲水'];
+                    const mealRank = p => { const i = MEAL_ORDER.indexOf(p); return i === -1 ? 99 : i; };
+
+                    const sorted = [...monthRecords].sort((a, b) => {
+                        const da = new Date(a.timestamp), db = new Date(b.timestamp);
+                        if (da.toDateString() !== db.toDateString()) return db - da; // newest first
+                        const pa = a.category === 'exercise' ? '運動' : a.category === 'water' ? '飲水' : (a.mealPeriod || '午餐');
+                        const pb = b.category === 'exercise' ? '運動' : b.category === 'water' ? '飲水' : (b.mealPeriod || '午餐');
+                        return mealRank(pa) - mealRank(pb);
+                    });
+
+                    // ── PASS 3: Build rows ──────────────────────────────────────────
+                    const rows = sorted.map(r => {
+                        const dateStr = new Date(r.timestamp).toLocaleDateString('zh-TW');
+                        const dt = dailyTotals[dateStr];
+
+                        // ── Body stats: match key using SAME format as addBodyStats ──
+                        const statsDateOptions = { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' };
+                        const statsDateKey = new Date(r.timestamp).toLocaleDateString('zh-TW', statsDateOptions);
+                        const bStats = bodyStats[statsDateKey] || {};
+
+                        // Shared daily total columns (all integers)
+                        const dailyCols = {
+                            '當日總熱量(kcal)': Math.ceil(dt.cals),
+                            '當日總碳水(g)': Math.ceil(dt.carbs),
+                            '當日總蛋白(g)': Math.ceil(dt.protein),
+                            '當日總脂肪(g)': Math.ceil(dt.fat),
+                            '當日總飲水(cc)': Math.ceil(dt.water),
+                            '當日總負荷': Math.ceil(dt.load)
+                        };
+
+                        const bodyStatsCols = {
+                            '體重(kg)': bStats.weight ? parseFloat(bStats.weight).toFixed(1) : '未紀錄',
+                            '體脂(%)': bStats.fat ? parseFloat(bStats.fat).toFixed(1) : '未紀錄'
+                        };
+
+                        if (r.category === 'exercise') {
+                            return {
+                                '日期': dateStr,
+                                ...bodyStatsCols,
+                                '時段': '運動',
+                                '項目名稱': r.type,
+                                '份量': `${r.time} 分鐘`,
+                                '單項負荷': r.load,
+                                '單項熱量(kcal)': 0,
+                                ...dailyCols
+                            };
+                        } else if (r.category === 'diet') {
+                            const gramsMatch = r.name.match(/\((\d+(?:\.\d+)?)g\)/);
+                            return {
+                                '日期': dateStr,
+                                ...bodyStatsCols,
+                                '時段': r.mealPeriod || '午餐',
+                                '項目名稱': r.name,
+                                '份量': gramsMatch ? gramsMatch[1] + 'g' : '-',
+                                '單項負荷': 0,
+                                '單項熱量(kcal)': Math.ceil(r.calories),
+                                ...dailyCols
+                            };
+                        } else {
+                            return {
+                                '日期': dateStr,
+                                ...bodyStatsCols,
+                                '時段': '飲水',
+                                '項目名稱': '飲水紀錄',
+                                '份量': `${r.amount} cc`,
+                                '單項負荷': 0,
+                                '單項熱量(kcal)': 0,
+                                ...dailyCols
+                            };
+                        }
+                    });
+
+                    // ── Build workbook ──────────────────────────────────────────────
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.json_to_sheet(rows);
+                    ws['!cols'] = [
+                        { wch: 14 }, // 日期
+                        { wch: 10 }, // 體重
+                        { wch: 9 }, // 體脂
+                        { wch: 10 }, // 時段
+                        { wch: 24 }, // 項目名稱
+                        { wch: 10 }, // 份量
+                        { wch: 10 }, // 單項負荷
+                        { wch: 14 }, // 單項熱量
+                        { wch: 14 }, // 當日總熱量
+                        { wch: 13 }, // 當日總碳水
+                        { wch: 13 }, // 當日總蛋白
+                        { wch: 13 }, // 當日總脂肪
+                        { wch: 14 }, // 當日總飲水
+                        { wch: 12 }  // 當日總負荷
+                    ];
+                    XLSX.utils.book_append_sheet(wb, ws, '健康日誌明細');
+
+                    // Filename: 健康紀錄報表_YYYYMMDD.xlsx (today's date)
+                    const today = new Date();
+                    const stamp = today.getFullYear().toString()
+                        + String(today.getMonth() + 1).padStart(2, '0')
+                        + String(today.getDate()).padStart(2, '0');
+                    XLSX.writeFile(wb, `健康紀錄報表_${stamp}.xlsx`);
+                });
+            }
+
+
+        });
     </script>
 </body>
 
